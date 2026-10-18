@@ -93,9 +93,9 @@ is ordinary Reveal markup:
 - in a Markdown slide, the same attributes in `<!-- .element: … -->` and
   `<!-- .slide: … -->` comments
 
-Bespoke motion, such as D3 transitions or a GSAP hero, stays inside
-`<deck-*>` components (see the artefact-builder skill). You place those from
-the Components inspector.
+Data-driven motion, such as a D3 chart's transitions, lives inside the
+`<deck-*>` D3 components (see the artefact-builder skill). You place those
+from the Components inspector.
 
 Each edit goes into the open buffer as one undoable change. The preview shows
 it straight away, and nothing reaches disk until you save. Use
