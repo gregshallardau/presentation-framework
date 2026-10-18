@@ -22,6 +22,12 @@
  * from those buffers instead of the files on disk (and passes every file through
  * `overlay.transform(key, text)` when defined). Without an overlay, or
  * without the query parameter, assembly is unchanged.
+ *
+ * Reloads: by default a slide-file change sends Vite's `full-reload` to every
+ * page. `slides({ reload: 'event' })` (the GUI editor) sends the custom HMR
+ * event `deck:slides-changed` instead; src/main.js reloads ordinary deck pages
+ * on it, while editor previews are refreshed by the editor itself - off
+ * screen, so the visible preview never flashes.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -95,7 +101,7 @@ function previewId(url) {
 	return new URL(url, 'http://localhost').searchParams.get('__preview');
 }
 
-export default function slidesPlugin({ overlay } = {}) {
+export default function slidesPlugin({ overlay, reload: reloadMode = 'full' } = {}) {
 	let root = process.cwd();
 	return {
 		name: 'deck-slides',
@@ -120,7 +126,9 @@ export default function slidesPlugin({ overlay } = {}) {
 			server.watcher.add(dir);
 			const reload = (file) => {
 				if (file.startsWith(dir) && SLIDE_RE.test(file)) {
-					server.ws.send({ type: 'full-reload' });
+					server.ws.send(
+						reloadMode === 'event' ? { type: 'custom', event: 'deck:slides-changed' } : { type: 'full-reload' }
+					);
 				}
 			};
 			server.watcher.on('add', reload).on('unlink', reload).on('change', reload);

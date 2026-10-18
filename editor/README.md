@@ -51,6 +51,10 @@ The port follows `npm start`: it is 8000 unless you pass
   about 0.6 s after you stop typing (you can change this in Settings).
   - Saved files reload through Vite as usual, so CSS, components and
     `deck.config.js` changes show **on save**.
+  - The preview never shows a half-loaded page. Each refresh loads off screen
+    at the same slide and step, then swaps in once Reveal has laid it out. Vite
+    doesn't reload editor previews; the editor refreshes them after edits and
+    when files change on disk (`slides({ reload: 'event' })`).
   - **Follow cursor** moves the preview to the slide, or the `--` sub-slide,
     under the cursor. Moving through the preview opens the matching file.
   - The toolbar has previous/next, the overview, speaker view, a skin

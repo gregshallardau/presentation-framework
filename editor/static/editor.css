@@ -1963,6 +1963,11 @@ kbd {
 	border: 0;
 	display: block;
 }
+/* The loading buffer keeps full size (Reveal scales to it) but is never seen. */
+.deck-frame-wrap iframe:not(.front) {
+	visibility: hidden;
+	pointer-events: none;
+}
 .preview-toolbar select#preview-theme {
 	max-width: 150px;
 }

@@ -73,15 +73,26 @@ export function createAnimator(host) {
 		probe.onContextMenu((info) =>
 			info.edit ? attempt(editText)(info.element) : contextMenu(info)
 		);
-		if (showAllSteps) {
-			showAllSteps = false;
-			const steps = probe.steps();
-			if (steps.length) {
-				const { h, v } = deck.getIndices();
-				host.quietSlide({ h, v, f: steps[steps.length - 1].index });
-			}
-		}
 		refresh();
+	}
+
+	/**
+	 * Runs on a freshly loaded preview before it is swapped in (still hidden):
+	 * after an edit, show the slide with every step revealed so animated
+	 * elements stay visible and right-clickable. Returns true if it moved.
+	 */
+	function beforeShow(win) {
+		if (!showAllSteps) return false;
+		showAllSteps = false;
+		const deck = win.Reveal;
+		const slide = deck.getCurrentSlide();
+		const indices = [...slide.querySelectorAll('.fragment')]
+			.filter((el) => el.closest('section') === slide)
+			.map((el) => Number(el.getAttribute('data-fragment-index') || 0));
+		if (!indices.length) return false;
+		const { h, v } = deck.getIndices();
+		deck.slide(h, v, Math.max(...indices));
+		return true;
 	}
 
 	/**
@@ -1193,6 +1204,7 @@ export function createAnimator(host) {
 
 	return {
 		onFrameReady,
+		beforeShow,
 		toggle,
 		setHighlight: (on) => {
 			panel().querySelector('[data-tl="highlight"]').checked = on;

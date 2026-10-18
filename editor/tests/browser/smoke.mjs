@@ -451,6 +451,49 @@ try {
 		);
 	});
 
+	await step('the visible preview never shows a half-loaded page', async () => {
+		// Sample the visible frame every 20 ms through an edit, a save and an
+		// outside change: each sample must be blank or a deck Reveal has laid out.
+		await page.evaluate(() => {
+			window.__frameSamples = { total: 0, raw: 0 };
+			window.__sampler = setInterval(() => {
+				const doc = document.getElementById('deck-frame').contentDocument;
+				window.__frameSamples.total++;
+				if (doc && doc.location.href !== 'about:blank' && !doc.querySelector('.reveal.ready'))
+					window.__frameSamples.raw++;
+			}, 20);
+		});
+		await page.click('.slide-item[data-file="000-title.html"]');
+		await until(
+			async () => (await page.textContent('#preview-document')).startsWith('slides/000-title.html'),
+			'title slide'
+		);
+		await menu(frame.locator('h1').first(), 'Animate', 'grow');
+		await until(async () => /fragment grow/.test(await buffer('000-title.html')), 'edit');
+		await current();
+		await page.keyboard.press('Control+s');
+		await until(async () => /fragment grow/.test(fx.read('slides/000-title.html')), 'save');
+		fx.write(
+			'slides/001-live-demo.html',
+			fx.read('slides/001-live-demo.html').replace('Live demo', 'Live demo!')
+		);
+		await until(
+			async () => (await frame.locator('h2', { hasText: 'Live demo!' }).count()) === 1,
+			'outside change shown'
+		);
+		await wait(500);
+		const samples = await page.evaluate(() => {
+			clearInterval(window.__sampler);
+			return window.__frameSamples;
+		});
+		assert.ok(samples.total > 50, `sampled ${samples.total} times`);
+		assert.equal(
+			samples.raw,
+			0,
+			`${samples.raw} of ${samples.total} samples showed an unready page`
+		);
+	});
+
 	await step('build the deck', async () => {
 		await page.click('#build-button');
 		await page.click('text=Build the deck');

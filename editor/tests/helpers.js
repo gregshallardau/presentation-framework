@@ -100,7 +100,7 @@ export async function startEditor(root, { live = false } = {}) {
 				'@': '/src',
 			},
 		},
-		plugins: [slides({ overlay }), deckEditor({ overlay })],
+		plugins: [slides({ overlay, reload: 'event' }), deckEditor({ overlay })],
 	});
 	await server.listen();
 	const origin = new URL(server.resolvedUrls.local[0]).origin;

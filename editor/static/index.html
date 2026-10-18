@@ -299,7 +299,10 @@
           </div>
           <div class="preview-body deck-preview-body" id="preview-body">
             <div class="deck-frame-wrap" id="deck-frame-wrap">
-              <iframe id="deck-frame" title="Deck preview" tabindex="0"></iframe>
+              <!-- Double-buffered: changes load into #deck-frame-next off screen and swap in
+                   once Reveal is ready, so the visible preview never shows a half-loaded page. -->
+              <iframe id="deck-frame" class="front" title="Deck preview" tabindex="0"></iframe>
+              <iframe id="deck-frame-next" title="Deck preview (loading)" tabindex="-1" aria-hidden="true"></iframe>
             </div>
             <div id="preview-loading" class="preview-loading" hidden>
               <span class="spinner"></span><span>Updating the deck…</span>

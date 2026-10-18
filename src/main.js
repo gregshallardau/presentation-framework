@@ -38,6 +38,15 @@ deck.initialize().then(() => {
 
 window.Reveal = deck;
 
+// Dev only: under the GUI editor (vite.config.editor.js) slide changes arrive as
+// this event instead of a full reload. Editor previews (?__preview=) are
+// refreshed by the editor itself; every other deck page reloads as usual.
+if (import.meta.hot) {
+	import.meta.hot.on('deck:slides-changed', () => {
+		if (!new URLSearchParams(location.search).has('__preview')) location.reload();
+	});
+}
+
 /**
  * Persistent deck chrome (logo + footer) from deck.config.js `chrome`.
  * Appended to .reveal so it sits over every slide, outside the slide transform.

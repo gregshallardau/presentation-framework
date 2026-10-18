@@ -28,7 +28,8 @@ export default defineConfig({
 			'@': '/src',
 		},
 	},
-	plugins: [slides({ overlay }), deckEditor({ overlay })],
+	// reload: 'event' - the editor refreshes its preview itself, off screen (no flash).
+	plugins: [slides({ overlay, reload: 'event' }), deckEditor({ overlay })],
 	css: {
 		preprocessorOptions: {
 			scss: {

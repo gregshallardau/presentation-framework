@@ -136,7 +136,6 @@
 		inspectTab: 'slide',
 		job: null,
 		frameIndices: null,
-		navigatingTo: null,
 		presentWindow: null,
 	};
 	let monacoReady;
@@ -650,6 +649,8 @@
 			renderTree();
 			renderSlides();
 			// Vite reloads the deck on its own for saved files; drop the overlay copy now.
+			// The preview already shows this text: drop it from the overlay, no reload.
+			// (Vite does not reload editor previews; see slides({ reload: 'event' }).)
 			schedulePreview(0, { reload: false });
 			scheduleLint(0);
 			if (path === 'deck.config.js') loadConfig().catch(() => {});
@@ -1101,9 +1102,19 @@
 		node.className = 'render-state ' + kind;
 		$('preview-loading').hidden = kind !== 'updating';
 	}
-	function previewUrl() {
-		const indices = state.frameIndices;
-		return `/?__preview=${state.client}${indices ? `#/${indices.h}/${indices.v}` : ''}`;
+	// Where the visible preview is (slide and fragment step), for the next load to start at.
+	function previewPosition() {
+		const deck = reveal();
+		if (deck) {
+			const { h, v, f } = deck.getIndices();
+			return { h, v: v || 0, f: f === undefined ? -1 : f };
+		}
+		return state.frameIndices ? { ...state.frameIndices, f: -1 } : null;
+	}
+	function previewUrl(bust = '') {
+		const at = previewPosition();
+		const hash = at ? `#/${at.h}/${at.v}${at.f >= 0 ? `/${at.f}` : ''}` : '';
+		return `/?__preview=${state.client}${bust ? `&r=${bust}` : ''}${hash}`;
 	}
 	function schedulePreview(delay = state.previewDelay, { reload = true } = {}) {
 		clearTimeout(state.previewTimer);
@@ -1133,16 +1144,61 @@
 		$('preview-time').textContent = count
 			? `Showing ${count} unsaved slide file${count === 1 ? '' : 's'}`
 			: 'Showing saved files';
-		if (reload) reloadFrame();
+		// Reload when asked, and whenever the visible preview is behind the text
+		// (e.g. a save that cancelled a pending debounced refresh).
+		if (reload || state.frameVersion !== version) reloadFrame();
 	}
+	/**
+	 * Loads the preview into the hidden buffer frame, readies it at the same
+	 * slide and step, then swaps it in. A newer reload supersedes an older one.
+	 */
+	let loadToken = 0;
 	function reloadFrame() {
 		setRenderState('Updating', 'updating');
-		try {
-			if (frameWindow()?.location.pathname === '/') frameWindow().location.reload();
-			else $('deck-frame').src = previewUrl();
-		} catch {
-			$('deck-frame').src = previewUrl();
+		const back = $('deck-frame-next');
+		const token = ++loadToken;
+		const target = previewPosition();
+		back.dataset.version = String(state.postedVersion);
+		back.onload = () => {
+			if (token === loadToken && back.contentWindow?.location.href !== 'about:blank')
+				prepareFrame(back, token, target).catch((error) => setRenderState(error.message, 'failed'));
+		};
+		back.src = previewUrl(token);
+	}
+	async function prepareFrame(back, token, target) {
+		const win = back.contentWindow;
+		const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+		for (let i = 0; !win.Reveal?.isReady?.(); i++) {
+			if (token !== loadToken) return;
+			if (i > 200) throw new Error('Deck did not start');
+			await sleep(50);
 		}
+		const deck = win.Reveal;
+		applyPreviewTheme(win);
+		// The URL hash already asked for this spot; make sure, without a visible transition.
+		const now = deck.getIndices();
+		if (target && (now.h !== target.h || (now.v || 0) !== target.v || (now.f ?? -1) !== target.f)) {
+			const { transition, backgroundTransition } = deck.getConfig();
+			deck.configure({ transition: 'none', backgroundTransition: 'none' });
+			deck.slide(target.h, target.v, target.f);
+			deck.configure({ transition, backgroundTransition });
+		}
+		if (await state.animator?.beforeShow?.(win)) await sleep(260); // let fragments finish fading in
+		await new Promise((resolve) =>
+			win.requestAnimationFrame(() => win.requestAnimationFrame(resolve))
+		);
+		if (token !== loadToken) return;
+		const front = $('deck-frame');
+		front.id = 'deck-frame-next';
+		front.classList.remove('front');
+		front.onload = null;
+		back.id = 'deck-frame';
+		back.classList.add('front');
+		back.onload = null;
+		front.src = 'about:blank';
+		attachFrame();
+		const present = state.presentWindow;
+		if (present && !present.closed) present.location.reload();
 	}
 	function attachFrame() {
 		const win = frameWindow();
@@ -1160,7 +1216,8 @@
 		const hook = (deck) => {
 			if (deck.__studioHooked) return;
 			deck.__studioHooked = true;
-			state.frameVersion = state.postedVersion;
+			const loaded = $('deck-frame').dataset.version;
+			state.frameVersion = loaded === undefined ? state.postedVersion : Number(loaded);
 			applyPreviewTheme();
 			deck.on('slidechanged', onFrameSlide);
 			deck.on('overviewshown', () => setRenderState('Overview', ''));
@@ -1198,9 +1255,7 @@
 		const shown = showFramePosition();
 		if (!shown) return;
 		const { h, v, slide } = shown;
-		const target = state.navigatingTo;
-		state.navigatingTo = null;
-		if (target && target.h === h && target.v === (v || 0)) return;
+		if (state.navigating) return;
 		// The author navigated inside the preview: bring the matching source along.
 		if (state.follow && slide && slide.path !== state.active) {
 			const sub = slide.subslides.find((s) => s.v === (v || 0));
@@ -1245,10 +1300,9 @@
 	function quietSlide({ h, v = 0, f }, { autoAnimate = true } = {}) {
 		const deck = reveal();
 		if (!deck) return;
-		state.navigatingTo = { h, v };
 		const restore = !autoAnimate && deck.getConfig().autoAnimate !== false;
 		if (restore) deck.configure({ autoAnimate: false });
-		deck.slide(h, v, f);
+		ownSlide(deck, () => deck.slide(h, v, f));
 		if (restore) setTimeout(() => deck.configure({ autoAnimate: true }), 0);
 		syncPresent(h, v);
 	}
@@ -1316,9 +1370,26 @@
 		}
 		const now = deck.getIndices();
 		if (now.h === h && (now.v || 0) === v) return;
-		state.navigatingTo = { h, v };
-		deck.slide(h, v);
+		// A slide the visible preview doesn't have yet (just created on disk):
+		// go there once the refreshed preview is swapped in.
+		if (!deck.getSlide(h, v)) {
+			state.pendingNavigation = { h, v };
+			state.previewSent = null;
+			schedulePreview(0);
+			return;
+		}
+		ownSlide(deck, () => deck.slide(h, v));
 		syncPresent(h, v);
+	}
+	// Reveal fires slidechanged synchronously inside slide(): anything fired
+	// while we drive the deck is ours, even when Reveal clamps the indices.
+	function ownSlide(deck, fn) {
+		state.navigating = true;
+		try {
+			fn();
+		} finally {
+			state.navigating = false;
+		}
 	}
 	function followCursor(force = false) {
 		const buffer = current();
@@ -1350,9 +1421,9 @@
 			}
 		} catch {}
 	}
-	function applyPreviewTheme() {
+	function applyPreviewTheme(win = frameWindow()) {
 		try {
-			const root = frameWindow().document.documentElement;
+			const root = win.document.documentElement;
 			const theme = state.previewTheme || state.config?.values?.theme || '';
 			if (theme) root.dataset.theme = theme;
 			else delete root.dataset.theme;
@@ -2760,6 +2831,9 @@
 				}
 				persist();
 				if (!first) {
+					// Changed on disk by something else: refresh the preview, off screen.
+					state.previewSent = null;
+					schedulePreview(0);
 					scheduleLint(300);
 					if (state.nav === 'git') await loadGit();
 				}
@@ -2908,7 +2982,18 @@
 		};
 		$('deck-prev').onclick = () => reveal()?.prev();
 		$('deck-next').onclick = () => reveal()?.next();
-		$('deck-frame').addEventListener('load', attachFrame);
+		// The visible frame can still reload in place (Vite, after a JS or config change).
+		$('deck-frame-wrap').addEventListener(
+			'load',
+			(event) => {
+				if (
+					event.target.id === 'deck-frame' &&
+					event.target.contentWindow?.location.href !== 'about:blank'
+				)
+					attachFrame();
+			},
+			true
+		);
 		let searchTimer;
 		$('workspace-query').oninput = () => {
 			clearTimeout(searchTimer);
@@ -3026,7 +3111,7 @@
 			applyLayout();
 			// The preview starts on the overlay id, so unsaved drafts show from the first paint.
 			await sendPreview(false).catch(() => {});
-			$('deck-frame').src = previewUrl();
+			reloadFrame();
 			const session = readStorage('session', {});
 			for (const path of session.paths || [])
 				try {
