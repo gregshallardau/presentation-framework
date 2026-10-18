@@ -43,6 +43,14 @@ describe('deck model', () => {
 		assert.deepEqual(intro.subslides, [{ v: 0, line: 1 }]);
 	});
 
+	it('ignores Reveal attribute comments in titles', () => {
+		const { slides } = deckModel(fx.root, {
+			'slides/010-intro.md':
+				'<!-- .slide: data-auto-animate -->\n## <!-- .element: data-id="intro" --> Intro\n',
+		});
+		assert.equal(slides.find((s) => s.file === '010-intro.md').title, 'Intro');
+	});
+
 	it('maps a cursor line to Reveal indices', () => {
 		const intro = deckModel(fx.root).slides.find((s) => s.file === '010-intro.md');
 		assert.deepEqual(indicesAt(intro, 1), { h: 1, v: 0 });

@@ -339,6 +339,11 @@ new `data-id`'d entry:
 Rule of thumb: single-slide, a few small reveals → `.fragment`. A whole block
 growing or rearranging across the deck's flow → auto-animate rungs.
 
+In deck studio (`npm run edit`), **Animate** lays these out as a timeline you
+edit by clicking and dragging. **Morphs** outlines exactly what Reveal will tween
+between neighbouring slides, and links elements with a `data-id`. See
+[`editor/README.md#animation`](../editor/README.md#animation).
+
 ---
 
 ## Slide backgrounds & transitions

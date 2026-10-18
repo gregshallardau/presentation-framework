@@ -19,7 +19,12 @@ const stripTags = (html) =>
 export function slideTitle(text, ext) {
 	if (ext === 'md') {
 		const heading = text.match(/^#{1,6}\s+(.+)$/m);
-		return heading ? heading[1].replace(/[*_`]/g, '').trim() : null;
+		return heading
+			? heading[1]
+					.replace(/<!--[\s\S]*?-->/g, '')
+					.replace(/[*_`]/g, '')
+					.trim() || null
+			: null;
 	}
 	const heading = text.match(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/i);
 	return heading ? stripTags(heading[2]) || null : null;

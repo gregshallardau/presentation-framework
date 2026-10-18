@@ -2,7 +2,10 @@
 // editor's make_snapshot() overlay. The editor POSTs its dirty slide buffers
 // under a per-tab preview id; build/vite-plugin-slides.js assembles
 // `/?__preview=<id>` from them (falling back to disk for every other file).
-// Held in memory only; nothing here is ever written to disk.
+// Held in memory only; nothing here is ever written to disk. transform() adds
+// source positions to HTML slides (annotate.js) so preview clicks map to source.
+
+import { annotateHtml } from './annotate.js';
 
 const MAX_PREVIEWS = 32;
 
@@ -16,6 +19,9 @@ export function createOverlay() {
 			previews.delete(id);
 			previews.set(id, { buffers, at: Date.now() });
 			while (previews.size > MAX_PREVIEWS) previews.delete(previews.keys().next().value);
+		},
+		transform(path, text) {
+			return /\.html$/i.test(path) ? annotateHtml(text, path) : text;
 		},
 		// A saved file is on disk now; never let a stale buffer shadow it.
 		dropPath(path) {

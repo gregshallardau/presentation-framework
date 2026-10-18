@@ -55,6 +55,8 @@ The port follows `npm start`: it is 8000 unless you pass
     under the cursor. Moving through the preview opens the matching file.
   - The toolbar has previous/next, the overview, speaker view, a skin
     preview, the print/PDF view and a reload button.
+- **Animate** and **Morphs** open the animation timeline and the auto-animate
+  highlight (see [Animation](#animation)).
 - **Present** (the ↗ button) opens the deck in its own window. That window
   follows the editor too.
 
@@ -79,6 +81,90 @@ history follows them.
 | Renumber the whole deck | `…` beside the slide count → *Renumber the deck* |
 
 Unsaved slide edits are saved first, because these actions rename files.
+
+## Animation
+
+Deck studio edits the motion Reveal already has: fragments, slide transitions
+and auto-animate. It doesn't add an animation runtime, and everything it writes
+is ordinary Reveal markup:
+
+- in an HTML slide, `class="fragment fade-up"`, `data-fragment-index`,
+  `data-transition` and `data-auto-animate*` on the tags themselves
+- in a Markdown slide, the same attributes in `<!-- .element: … -->` and
+  `<!-- .slide: … -->` comments
+
+Bespoke motion, such as D3 transitions or a GSAP hero, stays inside
+`<deck-*>` components (see the artefact-builder skill). You place those from
+the Components inspector.
+
+Each edit goes into the open buffer as one undoable change. The preview shows
+it straight away, and nothing reaches disk until you save. Use
+**Save slides** in the timeline to save every changed slide file at once.
+
+### Timeline
+
+**Animate** in the preview toolbar opens the timeline for the slide on screen.
+
+| Row | What it holds |
+|---|---|
+| **Arrive** | The slide's transition and speed, plus auto-animate (duration, easing, restart). **Replay arrival** runs the transition from the previous slide again. **Make next rung** copies the slide right after itself with auto-animate on both, ready for you to change the copy. |
+| **Morphs** | The elements Reveal will tween in from the previous slide. The bar under each one shows its delay and duration. |
+| **Step 1…n** | The slide's fragments in play order, one row per step. Each element is a chip with its effect (fade-up, grow, highlight-red, …). |
+
+- **Add an element:** click **Add element**, then click the element in the
+  preview. It becomes a new last step.
+- **Reorder:** drag a chip to another step, or onto *New step*. Drag a step
+  header to reorder whole steps. Reordering writes an explicit
+  `data-fragment-index` on every fragment of the slide.
+- **Preview a step:** click a step header to show the slide at that step.
+  **Play steps** runs through them all.
+- **Edit one element:** pick it (a chip, or **Pick in the preview**). The
+  panel on the right sets its effect and step, or stops animating it.
+
+### Auto-animate
+
+**Morphs** in the preview toolbar (or *Show morphs* in the timeline) outlines
+what auto-animate will do between the slide on screen and its neighbours:
+
+- **blue:** morphs in from the previous slide
+- **violet:** morphs on to the next slide
+- **dashed green:** fades in, because nothing matched
+- **dashed orange:** has no match on the next slide
+
+The pairs come from Reveal's own matcher (`AutoAnimate` in
+`vendor/reveal.js/js/controllers/autoanimate.js`), run on the live deck. So
+the outlines include Reveal's implicit matches: same-text headings,
+paragraphs and list items, same-`src` images, and code blocks.
+
+For a picked element you can:
+
+- **Link to next slide…:** click the matching element on the next slide.
+  Both get the same `data-id`, and both slides get `data-auto-animate` if they
+  lack it. Reveal only pairs elements of the same type, so linking an `<h2>`
+  to an `<h3>` warns you that they will cross-fade rather than morph.
+- **Unlink:** removes a `data-id` pair. A pair Reveal made by matching
+  identical text can't be unlinked; change the text on one side instead.
+- **Duration, Delay, Easing:** sets this element's
+  `data-auto-animate-duration` / `-delay` / `-easing`, overriding the
+  slide's values.
+
+### How the preview maps to source
+
+In an editor preview (never in `npm start` or a build), every element of an
+HTML slide carries `data-studio-src="<file>:<offset>"`, the position of its
+tag in the text you are editing. A click in the preview therefore names the
+exact tag to change. Markdown elements are matched to their source line by
+text.
+
+Edits wait until the preview has caught up with the previous edit, so a
+quick series of changes never edits stale positions.
+
+**Markdown caveat:** Reveal attaches an `.element` comment to the element
+just before it. So the editor puts new comments at the start of list items
+and headings, where they always reach the whole block. In a paragraph with
+inline formatting (bold, a link…), the comment would land on the last
+formatted word instead, and the inspector warns you. Use a list item or an
+HTML slide for those.
 
 ## Inspector
 
@@ -172,8 +258,11 @@ Writes (`POST`/`PUT`) must be same-origin and carry `X-Editor-Token` from
 vite.config.editor.js     npm run edit: slides({ overlay }) + deckEditor({ overlay })
 editor/server/            the API (Node, no extra dependencies)
   plugin.js               routes, security, static files, Monaco
-  files.js deck.js slide-actions.js overlay.js config.js catalog.js lint.js git.js jobs.js
+  files.js deck.js slide-actions.js overlay.js annotate.js config.js catalog.js lint.js git.js jobs.js
 editor/static/            the app: index.html, editor.js, tokenizers.js, editor.css
+  animate.js              animation timeline + auto-animate tools
+  probe.js                inside the preview: picking, outlines, steps, Reveal's auto-animate pairs
+  source-edit.js          reads/writes Reveal attributes in HTML tags and Markdown comments
 editor/tests/             node:test suites + browser/smoke.mjs
 ```
 
@@ -187,7 +276,7 @@ autocomplete.
 ## Verification
 
 ```
-npm run test:editor           # API, planner, deck model, config, lint parity, Git, build (node:test)
+npm run test:editor           # API, planner, deck model, config, animation markup edits, lint parity, Git, build
 npm run test:editor:browser   # drives the editor in Chromium (playwright-core)
 ```
 

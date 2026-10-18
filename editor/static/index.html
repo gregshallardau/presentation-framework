@@ -281,6 +281,10 @@
               <span data-icon="grid"></span></button
             ><button class="icon-button small" data-action="speaker" title="Speaker view" aria-label="Speaker view">
               <span data-icon="notes"></span></button
+            ><button class="button ghost small tool-toggle" id="timeline-toggle" data-action="timeline" title="Animation timeline: fragments, transitions, auto-animate" aria-label="Animation timeline">
+              <span data-icon="timeline"></span>Animate</button
+            ><button class="button ghost small tool-toggle" id="aa-toggle" data-action="aa-highlight" aria-pressed="false" title="Highlight what auto-animates to and from the neighbouring slides" aria-label="Highlight auto-animate">
+              <span data-icon="morph"></span>Morphs</button
             ><select id="preview-theme" aria-label="Preview theme" title="Preview a skin"></select
             ><span class="toolbar-space"></span
             ><button class="icon-button small" data-action="print-view" title="Print / PDF view" aria-label="Print view">
@@ -323,6 +327,22 @@
           <div id="inspector-content" class="inspector-content"></div>
         </aside>
       </div>
+      <section class="timeline-panel" id="timeline-panel" hidden aria-label="Animation timeline">
+        <div class="pane-heading">
+          <span class="tl-title">ANIMATION</span>
+          <div class="heading-actions">
+            <button class="button ghost small" data-tl="play" title="Play this slide's steps in the preview"><span data-icon="play"></span>Play steps</button
+            ><button class="button ghost small" data-tl="add" title="Click an element in the preview to animate it"><span data-icon="plus"></span>Add element</button
+            ><label class="tl-switch" title="Outline what morphs between this slide and its neighbours"><input type="checkbox" data-tl="highlight" /><span>Show morphs</span></label
+            ><button class="button ghost small" data-tl="save" title="Save every changed slide file"><span data-icon="save"></span>Save slides</button
+            ><button class="icon-button small" data-tl="close" aria-label="Close timeline"><span data-icon="close"></span></button>
+          </div>
+        </div>
+        <div class="tl-legend">
+          <span class="morph">morphs</span><span class="out">morphs on</span><span class="enters">fades in</span><span class="leaves">no match next</span>
+        </div>
+        <div class="tl-body"></div>
+      </section>
       <section class="diagnostics-panel" id="diagnostics-panel" hidden>
         <div class="pane-heading">
           <span>BUILD &amp; DIAGNOSTICS</span

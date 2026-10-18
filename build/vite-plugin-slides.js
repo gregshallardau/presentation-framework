@@ -19,7 +19,8 @@
  * Preview overlay (used only by the GUI editor, editor/server/plugin.js): pass
  * `slides({ overlay })`, where `overlay.get(id)` returns { 'slides/<file>': text }
  * for unsaved editor buffers. A request for `/?__preview=<id>` then assembles
- * from those buffers instead of the files on disk. Without an overlay, or
+ * from those buffers instead of the files on disk (and passes every file through
+ * `overlay.transform(key, text)` when defined). Without an overlay, or
  * without the query parameter, assembly is unchanged.
  */
 import fs from 'node:fs';
@@ -79,9 +80,14 @@ function assemble(root, read = (file) => fs.readFileSync(file, 'utf8')) {
 	return out.join('\n');
 }
 
-// Reader that prefers the overlay's unsaved buffers, keyed 'slides/<file>'.
-function overlayReader(buffers) {
-	return (file) => buffers[`${DIR}/${path.basename(file)}`] ?? fs.readFileSync(file, 'utf8');
+// Reader that prefers the overlay's unsaved buffers, keyed 'slides/<file>', and
+// lets the overlay decorate every file (the editor adds source positions).
+function overlayReader(overlay, buffers) {
+	return (file) => {
+		const key = `${DIR}/${path.basename(file)}`;
+		const text = buffers[key] ?? fs.readFileSync(file, 'utf8');
+		return overlay.transform ? overlay.transform(key, text) : text;
+	};
 }
 
 function previewId(url) {
@@ -106,7 +112,7 @@ export default function slidesPlugin({ overlay } = {}) {
 				}
 				const id = overlay && previewId(ctx?.originalUrl);
 				const buffers = id ? overlay.get(id) : null;
-				return html.replace(MARKER, () => (buffers ? assemble(root, overlayReader(buffers)) : assemble(root)));
+				return html.replace(MARKER, () => (buffers ? assemble(root, overlayReader(overlay, buffers)) : assemble(root)));
 			},
 		},
 		configureServer(server) {

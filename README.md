@@ -15,7 +15,9 @@ npm run build:deck # static export of the current deck -> deck-dist/  (for publi
 
 **Deck studio** (`npm run edit`) is an optional browser editor for slides: Monaco on
 the left, the real deck live beside it (unsaved edits included), a drag-to-reorder
-slide list, and inspectors for `deck.config.js`, skins and components. It follows
+slide list, an animation timeline for fragments, transitions and auto-animate
+(with an outline of exactly what morphs between slides), and inspectors for
+`deck.config.js`, skins and components. It follows
 md-doc-pipeline's browser editor. See [`editor/README.md`](editor/README.md).
 
 `npm run build` (Reveal's own full build, regenerates `vendor/reveal.js/dist/`)

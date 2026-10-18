@@ -2082,3 +2082,248 @@ kbd {
 	padding: 1px 4px;
 	border-radius: 3px;
 }
+
+/* ── Animation timeline (animate.js) ───────────────────────────────────── */
+.tool-toggle {
+	gap: 5px;
+	font-size: 11px;
+	padding: 3px 8px;
+}
+.tool-toggle.active {
+	color: var(--accent);
+	background: var(--accent-soft);
+	border-color: var(--accent);
+}
+.button.small {
+	font-size: 11px;
+	padding: 4px 9px;
+	gap: 5px;
+}
+.timeline-panel {
+	height: 300px;
+	min-height: 300px;
+	border-top: 1px solid var(--border);
+	background: var(--bg);
+	display: flex;
+	flex-direction: column;
+}
+.timeline-panel .pane-heading {
+	gap: 8px;
+}
+.timeline-panel .heading-actions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.tl-legend {
+	display: flex;
+	gap: 14px;
+	padding: 4px 16px;
+	font-size: 10px;
+	color: var(--muted);
+	border-bottom: 1px solid var(--border);
+}
+.tl-legend span::before {
+	content: '';
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	border-radius: 3px;
+	margin-right: 5px;
+	vertical-align: -1px;
+	border: 2px solid;
+}
+.tl-legend .morph::before {
+	border-color: #315de3;
+}
+.tl-legend .out::before {
+	border-color: #7c3aed;
+}
+.tl-legend .enters::before {
+	border: 2px dashed #16a34a;
+}
+.tl-legend .leaves::before {
+	border: 2px dashed #ea580c;
+}
+.tl-body {
+	flex: 1;
+	min-height: 0;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 300px;
+}
+.tl-rows {
+	overflow: auto;
+	padding: 6px 0;
+}
+.tl-row {
+	display: grid;
+	grid-template-columns: 92px minmax(0, 1fr);
+	align-items: center;
+	min-height: 40px;
+	border-bottom: 1px solid var(--border);
+}
+.tl-row.drop {
+	background: var(--accent-soft);
+}
+.tl-label {
+	font-size: 10px;
+	font-weight: 650;
+	letter-spacing: 0.4px;
+	text-transform: uppercase;
+	color: var(--muted);
+	padding: 0 12px;
+	text-align: left;
+}
+.tl-step-head {
+	height: 100%;
+	cursor: pointer;
+	border-right: 3px solid transparent;
+}
+.tl-step-head:hover {
+	color: var(--accent);
+}
+.tl-step.shown .tl-step-head {
+	color: var(--accent);
+	border-right-color: var(--accent);
+}
+.tl-lane {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 12px 6px 4px;
+}
+.tl-chip {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	max-width: 280px;
+	padding: 4px 6px 4px 8px;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	background: var(--surface);
+	font-size: 11px;
+	cursor: pointer;
+}
+.tl-chip[draggable='true'] {
+	cursor: grab;
+}
+.tl-chip:hover,
+.tl-chip:focus-visible {
+	border-color: var(--accent);
+}
+.tl-chip.selected {
+	border-color: var(--accent);
+	background: var(--accent-soft);
+}
+.tl-chip.morph {
+	border-color: #315de3;
+	padding-bottom: 8px;
+}
+.tl-chip code {
+	font:
+		10px ui-monospace,
+		SFMono-Regular,
+		monospace;
+	color: var(--accent);
+}
+.tl-chip > span {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
+}
+.tl-chip .tl-select {
+	width: auto;
+	padding: 1px 4px;
+	font-size: 10px;
+	min-height: 0;
+	height: 22px;
+}
+.tl-bar {
+	position: absolute;
+	left: 8px;
+	right: 8px;
+	bottom: 3px;
+	height: 3px;
+	border-radius: 2px;
+	background: linear-gradient(
+		to right,
+		transparent calc(var(--start) * 100%),
+		#315de3 calc(var(--start) * 100%),
+		#315de3 calc((var(--start) + var(--length)) * 100%),
+		transparent calc((var(--start) + var(--length)) * 100%)
+	);
+}
+.tl-note {
+	font-size: 11px;
+	color: var(--muted);
+}
+.tl-field {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11px;
+	color: var(--muted);
+}
+.tl-field .input {
+	font-size: 11px;
+	padding: 3px 6px;
+	height: 26px;
+	width: auto;
+}
+.tl-number {
+	width: 72px !important;
+}
+.tl-switch {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 11px;
+	cursor: pointer;
+}
+.tl-inspector {
+	border-left: 1px solid var(--border);
+	overflow: auto;
+	padding: 12px 14px;
+	background: var(--surface);
+}
+.tl-inspector h3 {
+	font-size: 11px;
+	margin: 0 0 10px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.tl-inspector h4 {
+	font-size: 10px;
+	letter-spacing: 0.6px;
+	text-transform: uppercase;
+	color: var(--muted);
+	margin: 0 0 8px;
+}
+.tl-group {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 8px;
+	padding: 10px 0;
+	border-top: 1px solid var(--border);
+}
+.tl-group .tl-field {
+	width: 100%;
+	justify-content: space-between;
+}
+.tl-buttons {
+	display: flex;
+	gap: 6px;
+}
+.tl-warning {
+	font-size: 11px;
+	color: #8a6420;
+	background: color-mix(in srgb, #b0883b 14%, var(--bg));
+	padding: 6px 8px;
+	border-radius: 5px;
+	margin: 0 0 8px;
+}

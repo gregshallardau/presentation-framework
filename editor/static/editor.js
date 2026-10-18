@@ -19,6 +19,8 @@
 		file: 'M5 3h9l5 5v13H5Z M14 3v6h5 M9 13h6 M9 17h5',
 		files: 'M8 3h10v14H8Z M5 7H3v14h11v-2',
 		slides: 'M3 5h18v12H3Z M8 21h8 M12 17v4',
+		timeline: 'M3 6h8 M3 12h13 M3 18h5 M14 4v4 M19 10v4 M11 16v4',
+		morph: 'M4 7h6v6H4Z M14 11h6v6h-6Z M10 10l4 4',
 		stack: 'M4 4h16v6H4Z M4 14h16v6H4Z',
 		steps: 'M4 18h4v-4h4v-4h4V6h4',
 		notes: 'M5 3h14v18H5Z M9 8h6 M9 12h6 M9 16h3',
@@ -116,6 +118,12 @@
 		previewTheme: '',
 		previewSent: null,
 		previewTimer: null,
+		// Slide-text versions: the preview's data-studio-src offsets are valid only
+		// while frameVersion === editVersion (see animate.js ensureCurrent).
+		editVersion: 0,
+		postedVersion: 0,
+		frameVersion: 0,
+		animator: null,
 		lintTimer: null,
 		deckTimer: null,
 		problems: [],
@@ -351,6 +359,7 @@
 		persist();
 		renderSlides();
 		if (isSlide(buffer.path)) {
+			state.editVersion++;
 			schedulePreview();
 			scheduleDeck();
 		}
@@ -755,6 +764,11 @@
 	function renderSlides() {
 		const panel = $('slides-panel');
 		if (!panel || state.nav !== 'slides') return;
+		// Re-rendering mid-drag would detach the element being dragged.
+		if (state.dragging) {
+			state.renderAfterDrag = true;
+			return;
+		}
 		const filter = $('file-filter').value.toLowerCase();
 		panel.replaceChildren();
 		const groups = new Map();
@@ -847,6 +861,14 @@
 		event.dataTransfer.effectAllowed = 'move';
 		event.dataTransfer.setData('application/x-deck-slides', JSON.stringify(files));
 		state.dragging = files;
+		event.target.addEventListener('dragend', endDrag, { once: true });
+	}
+	function endDrag() {
+		state.dragging = null;
+		if (state.renderAfterDrag) {
+			state.renderAfterDrag = false;
+			renderSlides();
+		}
 	}
 	function dropZone(event, item) {
 		const rect = item.getBoundingClientRect();
@@ -863,7 +885,7 @@
 		const zone = dropZone(event, item);
 		item.removeAttribute('data-drop');
 		const files = state.dragging;
-		state.dragging = null;
+		endDrag();
 		if (!files || files.includes(target.file)) return;
 		if (zone === 'stack' && files.length > 1) {
 			toast("A stack can't go inside another stack. Drop it above or below a slide.", true);
@@ -1097,9 +1119,16 @@
 	async function sendPreview(reload) {
 		const buffers = dirtyBuffers(isSlide);
 		const signature = JSON.stringify(buffers);
-		if (signature === state.previewSent) return;
+		const version = state.editVersion;
+		if (signature === state.previewSent) {
+			// Same text as the preview already shows (e.g. an edit undone): it is current.
+			if (state.frameVersion === state.postedVersion) state.frameVersion = version;
+			state.postedVersion = version;
+			return;
+		}
 		state.previewSent = signature;
 		await post('/api/preview', { id: state.client, buffers });
+		state.postedVersion = version;
 		const count = Object.keys(buffers).length;
 		$('preview-time').textContent = count
 			? `Showing ${count} unsaved slide file${count === 1 ? '' : 's'}`
@@ -1131,6 +1160,7 @@
 		const hook = (deck) => {
 			if (deck.__studioHooked) return;
 			deck.__studioHooked = true;
+			state.frameVersion = state.postedVersion;
 			applyPreviewTheme();
 			deck.on('slidechanged', onFrameSlide);
 			deck.on('overviewshown', () => setRenderState('Overview', ''));
@@ -1147,6 +1177,7 @@
 			win.addEventListener('error', (event) =>
 				setRenderState('Slide script error: ' + event.message, 'failed')
 			);
+			state.animator?.onFrameReady(win);
 		};
 		wait();
 	}
@@ -1174,6 +1205,77 @@
 			openFile(slide.path, sub?.line || 1, { follow: false }).catch(() => {});
 		}
 		syncPresent(h, v || 0);
+	}
+	/* ── Animation tools (animate.js) ───────────────────────────────── */
+
+	// Text for a buffer without opening a tab for it.
+	async function bufferText(path) {
+		if (state.buffers.has(path)) return state.buffers.get(path);
+		const data = await api('/api/file?path=' + encodeURIComponent(path));
+		return { path, content: data.content };
+	}
+	// Replaces a buffer's text as one undoable edit (opening the buffer if needed).
+	async function setContent(path, text) {
+		const buffer = await loadBuffer(path);
+		if (buffer.content === text) return;
+		state.switching = true;
+		try {
+			if (buffer.model) {
+				buffer.model.pushStackElement();
+				buffer.model.pushEditOperations(
+					[],
+					[{ range: buffer.model.getFullModelRange(), text }],
+					() => null
+				);
+				buffer.model.pushStackElement();
+			} else if (state.active === path && state.fallback) state.fallback.value = text;
+		} finally {
+			state.switching = false;
+		}
+		buffer.content = text;
+		buffer.edited = true;
+		state.editVersion++;
+		persist();
+		renderSlides();
+		scheduleDeck();
+		scheduleLint();
+	}
+	function quietSlide({ h, v = 0, f }, { autoAnimate = true } = {}) {
+		const deck = reveal();
+		if (!deck) return;
+		state.navigatingTo = { h, v };
+		const restore = !autoAnimate && deck.getConfig().autoAnimate !== false;
+		if (restore) deck.configure({ autoAnimate: false });
+		deck.slide(h, v, f);
+		if (restore) setTimeout(() => deck.configure({ autoAnimate: true }), 0);
+		syncPresent(h, v);
+	}
+	let animatorLoading = null;
+	function withAnimator(fn) {
+		animatorLoading ??= import('/__editor/animate.js').then(({ createAnimator }) => {
+			state.animator = createAnimator({
+				el,
+				icon,
+				toast,
+				deck: () => state.deck,
+				reveal,
+				buffer: bufferText,
+				setContent,
+				frameCurrent: () => state.frameVersion === state.editVersion,
+				refreshPreview: () => schedulePreview(0),
+				openAt: (path, line) => openFile(path, line, { follow: false }),
+				quietSlide,
+				slideAction,
+				saveSlides: async () => {
+					if (await saveAll(isSlide)) toast('Saved the slide files');
+				},
+				layout: applyLayout,
+			});
+			const win = frameWindow();
+			if (reveal()) state.animator.onFrameReady(win);
+			return state.animator;
+		});
+		return animatorLoading.then(fn);
 	}
 	function slideAt(h, v) {
 		const candidates = state.deck.slides.filter((slide) => slide.h === h);
@@ -2713,6 +2815,8 @@
 		'build-menu': buildMenu,
 		build: () => startBuild(),
 		'insert-menu': insertMenu,
+		timeline: () => withAnimator((animator) => animator.toggle()),
+		'aa-highlight': () => withAnimator((animator) => animator.setHighlight(!animator.highlight())),
 		'editor-find': () => state.editor?.getAction('actions.find')?.run(),
 	};
 	async function init() {

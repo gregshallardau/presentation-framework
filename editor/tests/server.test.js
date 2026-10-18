@@ -130,6 +130,21 @@ describe('editor API', () => {
 			);
 		});
 
+		it('stamps source offsets on HTML slides in a preview, never in the plain deck', async () => {
+			await ed.api('/api/preview', { method: 'POST', body: { id: 'preview-src', buffers: {} } });
+			const preview = await ed.server.transformIndexHtml(
+				'/?__preview=preview-src',
+				fx.read('index.html'),
+				'/?__preview=preview-src'
+			);
+			assert.match(
+				preview,
+				/<section id="architecture" data-slug="architecture" data-studio-src="slides\/020-architecture.html:0">/
+			);
+			const plain = await ed.server.transformIndexHtml('/', fx.read('index.html'), '/');
+			assert.doesNotMatch(plain, /data-studio-src/);
+		});
+
 		it('drops a buffer from the overlay once that file is saved', async () => {
 			await ed.api('/api/preview', {
 				method: 'POST',
