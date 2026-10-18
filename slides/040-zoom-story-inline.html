@@ -1,0 +1,29 @@
+<section id="zoom-story-inline" data-slug="zoom-story-inline" data-transition="fade">
+	<h2>Two numbers, one balance</h2>
+	<!-- Inline story: the whole thing lives on the slide. Each beat after the
+	     first is one press; the component injects the fragments itself. -->
+	<deck-zoom-story class="r-stretch" label="In and Out on a seesaw">
+		<script type="application/json">
+		{
+			"root": { "view": "balance", "left": "in", "right": "out" },
+			"nodes": {
+				"in":  { "label": "In",  "value": 100, "tone": "success" },
+				"out": { "label": "Out", "value": 100, "tone": "danger" }
+			},
+			"beats": [
+				{ "show": "in,out", "camera": "in,out" },
+				{ "show": "root", "camera": "auto" },
+				{ "set": { "out": 120 } },
+				{ "hint": ["raise:in", "lower:out"] },
+				{ "set": { "in": 120 } }
+			]
+		}
+		</script>
+	</deck-zoom-story>
+	<p data-beat="3">Two ways back to balance.</p>
+	<aside class="notes">
+		Opens close on In and Out. Press: the seesaw appears under them. Press:
+		Out grows to 120 and it tips. Press: the two levers. Press: In rises to
+		match and it levels out.
+	</aside>
+</section>
