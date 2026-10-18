@@ -29,6 +29,9 @@ NN.M-<slug>.<md|html>    .M = vertical-stack minor, step 1; files sharing NN wra
   `slides/README.md` for the full rule.
 - Pick `.md` for prose / bullets / headings. Pick `.html` for scoped layout, a
   `<deck-*>` component, or a fully-inlined artefact.
+- Prefer clicking to typing filenames? `npm run edit` opens deck studio, which
+  adds, reorders, stacks and renames slides with the same numbering rules (see
+  [`editor/README.md`](../editor/README.md)).
 
 ### Shape 1 - Markdown (`NN-<slug>.md`)
 

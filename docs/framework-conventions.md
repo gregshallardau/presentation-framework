@@ -24,6 +24,10 @@ deck.config.js                 ROOT-level Reveal knobs a deck author tunes: slid
 build/vite-plugin-slides.js     stitches slides/*.{html,md} into that marker (dev + build)
 vite.config.ts                  Reveal's config + `@ -> /src` alias + slides() plugin
 vite.config.deck.js             `npm run build:deck` -> static export in deck-dist/
+vite.config.editor.js           `npm run edit` -> the dev server + deck studio (editor/)
+editor/                         TOOLING, not deck content: deck studio, the browser
+                                editor (server/ = Vite plugin API, static/ = the app).
+                                See editor/README.md
 
 src/
   main.js                       single entry: styles -> registry -> Reveal(../deck.config.js + Notes,Markdown) -> gsap/alpine

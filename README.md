@@ -9,8 +9,14 @@ ride that one pipeline invisibly.
 
 ```
 npm start          # Reveal's Vite dev server on http://localhost:8000  (the only command)
+npm run edit       # the same server + deck studio, a browser editor at /__editor/
 npm run build:deck # static export of the current deck -> deck-dist/  (for publishing)
 ```
+
+**Deck studio** (`npm run edit`) is an optional browser editor for slides: Monaco on
+the left, the real deck live beside it (unsaved edits included), a drag-to-reorder
+slide list, and inspectors for `deck.config.js`, skins and components. It follows
+md-doc-pipeline's browser editor. See [`editor/README.md`](editor/README.md).
 
 `npm run build` (Reveal's own full build, regenerates `vendor/reveal.js/dist/`)
 still works - run it after merging an upstream update.

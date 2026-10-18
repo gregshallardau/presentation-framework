@@ -8,6 +8,9 @@
 
 Also worth knowing:
 
+- **[`editor/README.md`](../editor/README.md)** - deck studio (`npm run edit`), the
+  browser editor: live preview of unsaved edits, drag-to-reorder slides, a
+  `deck.config.js` / skin / component inspector, lint, Git and build.
 - **`deck.css`** (repo root) - the one file you edit to re-skin a deck: a
   commented menu of brand knobs (`--primary`, `--bg`, `--fg`, `--muted`, `--font-*`, type
   scale), deck-wide element tweaks, and the utility classes (`.text-muted`,

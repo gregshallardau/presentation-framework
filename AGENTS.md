@@ -21,5 +21,13 @@ trigger conditions and procedure:
 - **`deck-builder`** - scaffold a whole new deck from an outline.
 - **`skin-builder`** - add a re-skin (`[data-theme]` block) from brand input.
 
+**`editor/` is tooling, not deck content.** Deck studio (`npm run edit`, see
+`editor/README.md`) numbers slides with `scripts/lib/slide-plan.js` and lints
+with `scripts/lib/lint.js`, the same libraries behind `make:slide` and
+`lint:slides`, so change those rules in one place. A new framework-level
+`deck.config.js` key also goes in `SCHEMA` in `editor/server/config.js`, which
+drives the editor's Deck form and autocomplete. Run `npm run test:editor` after
+touching any of these.
+
 Each skill's first line is "read `docs/framework-conventions.md`
 first" - do that even if you read nothing else here.
