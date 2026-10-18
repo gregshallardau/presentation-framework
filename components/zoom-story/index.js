@@ -12,6 +12,7 @@
 //   <deck-zoom-story story="balance-demo" class="r-stretch"></deck-zoom-story>
 //   <deck-zoom-story class="r-stretch"><script type="application/json">{...}</script></deck-zoom-story>
 //
+// Views: balance (seesaw), bars (stacked columns), tree - see views/.
 // Attributes: story (name of a /stories/<name>.js|json file), beats ("from-to",
 // default all), label (aria-label), height (stage height in slide px when not
 // r-stretch). Panels: light-DOM children with data-panel="<id>" are placed in
@@ -27,8 +28,9 @@ import { normalise, replay, select, isVisible } from './model.js';
 import { layout, placePanels, rectOf } from './layout.js';
 import { balance } from './views/balance.js';
 import { tree } from './views/tree.js';
+import { bars } from './views/bars.js';
 
-const VIEWS = { balance, tree };
+const VIEWS = { balance, tree, bars };
 
 // Deck-level story files, auto-discovered like the component registry:
 // saving /stories/<name>.js (default export) or <name>.json is the whole step.
@@ -109,6 +111,17 @@ class DeckZoomStory extends DeckElement {
 		}
 		.panel.on { opacity: 1; pointer-events: auto; }
 		::slotted(*) { width: 100%; }
+
+		/* bars: segments resize with their values and slide in/out of their parent's column */
+		.bars .card { transition-property: transform, opacity, width, height; }
+		.bars .card { transform: translate(var(--hx), var(--hy)); }
+		.bars .card.on { transform: translate(var(--x), var(--y)); }
+		.bars .face { transform: none; border-radius: var(--radius-control); }
+		.bars .card.thin .face { flex-direction: row; gap: 0.4em; }
+		.bars .card.thin .label, .bars .card.thin .value { font-size: 22px; }
+		.bars .card.tiny .face > * { display: none; }
+		.level { stroke: var(--fg); stroke-width: 3; stroke-dasharray: 10 8; opacity: 0; transition: opacity var(--motion-hero-duration) var(--motion-hero-ease); }
+		.level.on { opacity: 0.6; }
 
 		.world.instant, .world.instant * { transition: none !important; }
 		.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
@@ -199,7 +212,7 @@ class DeckZoomStory extends DeckElement {
 		this._stage = el('div', 'stage');
 		this._stage.setAttribute('role', 'figure');
 		this._stage.setAttribute('aria-label', this.getAttribute('label') || 'zoom story');
-		this._world = el('div', 'world');
+		this._world = el('div', `world ${m.root.view}`);
 		this._stage.append(this._world);
 
 		const svg = document.createElementNS(SVG_NS, 'svg');
@@ -220,7 +233,7 @@ class DeckZoomStory extends DeckElement {
 			if (!p) continue;
 			// colour: SHARED_STYLES modifiers (.primary/.warning/...) set --c
 			const card = el('div', `card ${n.tone || tones[n.side] || 'primary'}`);
-			if (n.depth === 0) card.classList.add('anchor');
+			if (n.depth === 0 && this._view.tilts) card.classList.add('anchor');
 			card.style.width = `${p.w}px`;
 			card.style.height = `${p.h}px`;
 			const parent = n.parent ? this._pos.get(n.parent) : p;
@@ -232,7 +245,7 @@ class DeckZoomStory extends DeckElement {
 			this._cards.set(n.id, card);
 			this._world.append(card);
 
-			if (n.parent) {
+			if (n.parent && this._view.links) {
 				const path = document.createElementNS(SVG_NS, 'path');
 				path.setAttribute('class', 'link');
 				this._links.append(path);
@@ -313,6 +326,7 @@ class DeckZoomStory extends DeckElement {
 		}
 		for (const [id, path] of this._linkEls) path.classList.toggle('on', isVisible(m, s, id));
 		for (const [id, panel] of this._panelEls) panel.classList.toggle('on', s.shown.has(id) && !s.hidden.has(id));
+		if (this._view.place) this._placeAll(s.values);
 		this._seesaw.classList.toggle('on', s.shown.has('root'));
 		const readout = this._seesaw.querySelector('.readout');
 		if (readout) readout.textContent = this._view.readout(m, s.values, this._fmt);
@@ -337,25 +351,61 @@ class DeckZoomStory extends DeckElement {
 				...(snap.shown.has('root') ? ['root'] : []),
 			]
 			: select(m, s.camera.spec);
-		const rects = ids.map((id) => this._rectOf(id, theta)).filter(Boolean);
+		const rectsAt = (values, th) => {
+			const geom = this._geom(values, th);
+			const panels = placePanels(m, geom);
+			return ids.map((id) => {
+				if (id === 'root') return this._view.rect(th, m, values);
+				const p = panels.get(id) ?? geom.get(id);
+				return p ? rectOf(p) : null;
+			}).filter(Boolean);
+		};
 		const width = this._stage.clientWidth || 16;
 		const height = this._stage.clientHeight || 9;
-		return fitView(rects, {
-			pad: m.camera.pad,
-			aspect: width / height,
-			minW: width / m.camera.maxZoom,
-		});
+		const opts = { pad: m.camera.pad, aspect: width / height, minW: width / m.camera.maxZoom };
+		const held = rectsAt(snap.values, theta);
+		const view = fitView(held, opts);
+		// The camera holds - unless holding would crop what it framed (a bar
+		// grew, the seesaw tipped): then it widens just enough, like the
+		// word-association slide's "only as much as the next word forces".
+		const now = rectsAt(s.values, this._view.tilt(m, s.values));
+		return now.every((r) => inside(r, view, width / height)) ? view : fitView([...held, ...now], opts);
 	}
 
-	_rectOf(id, theta) {
-		if (id === 'root') return this._view.rect(theta);
-		if (this._panels.has(id)) return rectOf(this._panels.get(id));
-		const n = this._model.nodes.get(id);
-		const p = this._pos.get(id);
-		if (!n || !p) return null;
-		if (n.depth !== 0) return rectOf(p);
-		const side = this._model.sides.find((sd) => sd.id === id);
-		return rectOf({ ...p, ...this._view.anchor(side, theta) });
+	/** Node centre-rects for these values: a view's own place(), or the fixed
+	 *  layout with each anchor riding the seesaw at tilt θ. */
+	_geom(values, theta) {
+		if (this._view.place) return this._view.place(this._model, values);
+		const pos = new Map(this._pos);
+		for (const side of this._model.sides) {
+			pos.set(side.id, { ...this._pos.get(side.id), ...this._view.anchor(side, theta) });
+		}
+		return pos;
+	}
+
+	/** place() views: every card, panel and the decor follow this beat's values. */
+	_placeAll(values) {
+		const m = this._model;
+		const geom = this._geom(values, 0);
+		for (const [id, card] of this._cards) {
+			const p = geom.get(id);
+			const n = m.nodes.get(id);
+			const parent = n.parent ? geom.get(n.parent) : p;
+			card.style.width = `${p.w}px`;
+			card.style.height = `${p.h}px`;
+			setXY(card, '--x', '--y', p);
+			// hidden = folded into the parent's column, at its own height
+			setXY(card, '--hx', '--hy', { ...p, x: parent.x });
+			card.classList.toggle('thin', p.h < 84);
+			card.classList.toggle('tiny', p.h < 30);
+		}
+		for (const [id, r] of placePanels(m, geom)) {
+			const panel = this._panelEls.get(id);
+			panel.style.width = `${r.w}px`;
+			panel.style.height = `${r.h}px`;
+			panel.style.transform = `translate(${r.x - r.w / 2}px, ${r.y - r.h / 2}px)`;
+		}
+		this._view.decorate?.(this._seesaw, m, values, geom);
 	}
 
 	/* ------------------------------------------------------------- the tilt */
@@ -376,14 +426,14 @@ class DeckZoomStory extends DeckElement {
 	_placeLinks(theta) {
 		this._theta = theta;
 		this._view.update(this._seesaw, theta);
-		const live = new Map(this._pos);
-		for (const side of this._model.sides) {
-			const a = this._view.anchor(side, theta);
-			const p = { ...this._pos.get(side.id), ...a };
-			live.set(side.id, p);
-			const card = this._cards.get(side.id);
-			setXY(card, '--x', '--y', p);
-			setXY(card, '--hx', '--hy', p);
+		if (!this._view.tilts && !this._linkEls.size) return;
+		const live = this._geom(this._state?.values, theta);
+		if (this._view.tilts) {
+			for (const side of this._model.sides) {
+				const card = this._cards.get(side.id);
+				setXY(card, '--x', '--y', live.get(side.id));
+				setXY(card, '--hx', '--hy', live.get(side.id));
+			}
 		}
 		for (const [id, path] of this._linkEls) {
 			const n = this._model.nodes.get(id);
@@ -425,6 +475,14 @@ function el(tag, cls) {
 function setXY(node, kx, ky, p) {
 	node.style.setProperty(kx, `${p.x - p.w / 2}px`);
 	node.style.setProperty(ky, `${p.y - p.h / 2}px`);
+}
+
+/** Is a world rect within a view [cx, cy, w] on a stage of this aspect? */
+function inside(r, [cx, cy, w], aspect) {
+	const h = w / aspect;
+	const e = 1;   // tolerance, world units
+	return r.x >= cx - w / 2 - e && r.x + r.w <= cx + w / 2 + e
+		&& r.y >= cy - h / 2 - e && r.y + r.h <= cy + h / 2 + e;
 }
 
 function clamp(v, lo, hi) {

@@ -15,6 +15,8 @@ const SIT = ANCHOR.h / 2 + BEAM_T;    // card centre above the beam end
 
 export const balance = {
 	reach: L,
+	tilts: true,   // anchors ride the beam, repositioned every tilt frame
+	links: true,
 
 	tilt(model, values) {
 		const a = values.get(model.root.left) ?? 0;
@@ -54,12 +56,15 @@ export const balance = {
 		g.querySelector('.beam').setAttribute('transform', `rotate(${(theta * 180) / Math.PI})`);
 	},
 
-	readout(model, values, fmt) {
-		const l = model.nodes.get(model.root.left);
-		const r = model.nodes.get(model.root.right);
-		const a = values.get(l.id); const b = values.get(r.id);
-		if (Math.abs(a - b) < 1e-9) return 'In balance';
-		const [big, small] = a > b ? [l, r] : [r, l];
-		return `${big.label} exceeds ${small.label} by ${fmt(Math.abs(a - b))}`;
-	},
+	readout: (model, values, fmt) => readout(model, values, fmt),
 };
+
+/** "Out exceeds In by $1,200" / "In balance" - shared with the bars view. */
+export function readout(model, values, fmt) {
+	const l = model.nodes.get(model.root.left);
+	const r = model.nodes.get(model.root.right);
+	const a = values.get(l.id); const b = values.get(r.id);
+	if (Math.abs(a - b) < 1e-9) return 'In balance';
+	const [big, small] = a > b ? [l, r] : [r, l];
+	return `${big.label} exceeds ${small.label} by ${fmt(Math.abs(a - b))}`;
+}

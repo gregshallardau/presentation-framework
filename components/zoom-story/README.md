@@ -38,7 +38,7 @@ It works on three ideas:
 
 ```js
 export default {
-	root: { view: 'balance', left: 'in', right: 'out' },   // or { view: 'tree', node: 'revenue' }
+	root: { view: 'balance', left: 'in', right: 'out' },   // or view: 'bars'; or { view: 'tree', node: 'revenue' }
 	format: { prefix: '$', suffix: '', decimals: 0 },
 	camera: { pad: 70, maxZoom: 2 },                        // optional defaults
 	nodes: {
@@ -59,7 +59,19 @@ export default {
 - **Views.** `balance` is a seesaw with `left` / `right` on the ends. The tilt
   follows the *relative* imbalance `(right − left) / (left + right)`, so the
   same rule holds at every scale. Each side's subtree fans outward from its
-  end. `tree` is a single tree growing right from the origin.
+  end. `bars` puts `left` / `right` side by side as two columns on one baseline,
+  height = value, with a dashed line at the shorter one's level. `expand` opens
+  a node as a new column beside it whose segments stack to exactly its height
+  (a mirrored icicle chart). Its height scale is fixed per story (the largest
+  total in any beat fills the frame) so bars stay comparable across beats.
+  `tree` is a single tree growing right from the origin. The same nodes and
+  beats work in every view: `stories/bars-demo.js` is `balance-demo` with
+  `view: 'bars'`.
+- **Adding a view.** A view is a small object in `views/` registered in
+  `VIEWS` (`index.js`). It provides `anchor`/`tilt` for fixed tree layouts, or
+  `place(model, values)` to compute every node's rect per beat (as `bars`
+  does), plus `mount`/`update`/`decorate` for its own SVG decor and `rect` for
+  `camera: 'root'`.
 - **Panels.** Any element can sit in the world, such as a `<deck-chart-*>`.
   Put it inside the tag with `data-panel="<id>"`. `story.panels[id]` places it
   beside node `at` (`side`: `outer` (the default), `above`, `below`, `left`,
@@ -77,7 +89,7 @@ Each beat is an object. Any of these can be combined:
 | `collapse` | selector | fold children back into their parent (`'*'` = everything) |
 | `set` | `{ id: 120 }` / `{ id: '+20' }` | change a value. Setting a parent scales its leaves proportionally. Totals and tilt follow. |
 | `hint` | `['raise:in', 'lower:out']` | lever arrows (▲ for raise/increase/up/more/grow/add, ▼ otherwise), on this beat only |
-| `camera` | `'auto'` / selector / panel id | `auto` fits everything visible. Flying to a panel shows it. **Holds** until a later beat names a new one. |
+| `camera` | `'auto'` / selector / panel id | `auto` fits everything visible. Flying to a panel shows it. **Holds** until a later beat names a new one, unless holding would crop what it framed (a bar grew), in which case it widens just enough. |
 
 Selectors are a csv string or array: `'in'`, `'in.*'` (in and everything under
 it), `'*'` (every node).
@@ -107,5 +119,6 @@ Part 2 opens on beat 5, exactly where part 1 ended, because both replay the
 same beats. Use `data-transition="none"` on the story slides so the hand-off
 is seamless.
 
-Demo: `slides/040-zoom-story-inline.html`, `050`–`070` and
-`stories/balance-demo.js`.
+Demo: `slides/040-zoom-story-inline.html`, `050`–`070` (seesaw, split
+around a chart slide), `080` (bars), `stories/balance-demo.js` and
+`stories/bars-demo.js`.

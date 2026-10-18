@@ -35,7 +35,8 @@ export function normalise(story) {
 	}
 
 	const root = { view: 'balance', ...(story.root || {}) };
-	const sides = root.view === 'balance'
+	// two-sided views (balance, bars) name left/right; one-sided ones name a node
+	const sides = root.left && root.right
 		? [{ id: root.left, dir: -1 }, { id: root.right, dir: 1 }]
 		: [{ id: root.node ?? [...nodes.values()].find((n) => !n.parent)?.id, dir: 1 }];
 	for (const s of sides) {
