@@ -16,6 +16,7 @@ import {
 	kebabCase,
 	pickGapMajor,
 	rebalanceMajors,
+	MAJOR_STEP,
 } from './slide-files.js';
 
 export class SlidePlanError extends Error {}
@@ -65,8 +66,10 @@ function gapBeside(slides, anchorSlug, side) {
 	else upper = anchor.major;
 	let gap = pickGapMajor(lower, upper);
 	if (gap != null) return { major: gap, renames: [], slides };
-	// exhausted - rebalance the whole deck, then re-resolve the same anchor relationship
-	const { renames } = rebalanceMajors(slides);
+	// exhausted - rebalance the whole deck, then re-resolve the same anchor relationship.
+	// Before a first slide numbered 000 there is no gap even then, so start at 010.
+	const tight = side === 'before' && anchor.major === majorsSorted(slides)[0];
+	const { renames } = rebalanceMajors(slides, tight ? MAJOR_STEP : 0);
 	const fresh = renamed(slides, renames);
 	const freshAnchor = findBySlug(fresh, anchorSlug);
 	const n2 = neighbours(fresh, freshAnchor.major);

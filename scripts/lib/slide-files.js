@@ -74,11 +74,12 @@ export function pickGapMajor(lower, upper) {
  * This is slides/README.md's "gap of exactly 1 - rebalance ... back to round
  * step-10 numbers" escape hatch, applied to the whole deck (the simple,
  * always-correct interpretation of "that local run of slides (or the whole
- * deck)").
+ * deck)"). `start` is the first major (0 by default; MAJOR_STEP leaves room
+ * in front of the first slide).
  */
-export function rebalanceMajors(slides) {
+export function rebalanceMajors(slides, start = 0) {
 	const majorsInOrder = [...new Set(slides.map((s) => s.major))].sort((a, b) => a - b);
-	const remap = new Map(majorsInOrder.map((major, i) => [major, i * MAJOR_STEP]));
+	const remap = new Map(majorsInOrder.map((major, i) => [major, start + i * MAJOR_STEP]));
 	const renames = [];
 	for (const s of slides) {
 		const newMajor = remap.get(s.major);

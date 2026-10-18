@@ -81,7 +81,7 @@
 		"check:vocab": "node scripts/check-shared-vocabulary.js",
 		"make:slide": "node scripts/make-slide.js",
 		"make:component": "node scripts/make-component.js",
-		"test:editor": "node --test editor/tests/",
+		"test:editor": "node --test editor/tests/*.test.js",
 		"test:editor:browser": "node editor/tests/browser/smoke.mjs"
 	},
 	"author": "Greg Shallard",
