@@ -19,7 +19,11 @@ import { initGsap } from '@/lib/gsap.js';
 import { initAlpine } from '@/lib/alpine.js';
 // d3.js is imported lazily by the components that use it.
 
-const { chrome, ...revealConfig } = deckConfig;
+const { chrome, theme, ...revealConfig } = deckConfig;
+
+// deck.config.js `theme` names a [data-theme] skin (src/styles/vars/semantic.css).
+// An explicit <html data-theme> in index.html still wins.
+if (theme && !document.documentElement.dataset.theme) document.documentElement.dataset.theme = theme;
 
 const deck = new Reveal({
 	...revealConfig,

@@ -38,6 +38,11 @@ export default {
 	/* Type a slide number then Enter to jump straight to it. */
 	jumpToSlide: true,
 
+	/* Re-skin: the name of a [data-theme="..."] block in
+	   src/styles/vars/semantic.css (e.g. 'dark'). Omit for the default skin.
+	   Not a Reveal option - src/main.js applies it to <html data-theme>. */
+	// theme: 'dark',
+
 	/* ── PERSISTENT DECK CHROME ──────────────────────────────────────────
 	   A logo and/or a footer line drawn on top of EVERY slide (they live
 	   outside the slide transform, so they don't slide/fade between slides).

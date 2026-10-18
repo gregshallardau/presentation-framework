@@ -291,8 +291,10 @@ hand-rolling a size.
 
 ## 9. Re-skin
 
-Runtime: `document.documentElement.dataset.theme = '<name>'` (or `<html
-data-theme="<name>">`). A skin is a `[data-theme="<name>"] { ... }` block appended
+Pick a deck's skin with `theme: '<name>'` in `deck.config.js` (src/main.js
+applies it to `<html data-theme>`; an explicit `<html data-theme="<name>">` in
+`index.html` wins). At runtime: `document.documentElement.dataset.theme =
+'<name>'`. A skin is a `[data-theme="<name>"] { ... }` block appended
 to `src/styles/vars/semantic.css` by `skin-builder`. Reveal's `--r-*` (via
 `theme/deck.css`) and D3 palettes (read live via `getComputedStyle`) follow
 automatically.

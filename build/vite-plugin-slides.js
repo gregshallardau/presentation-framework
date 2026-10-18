@@ -15,6 +15,12 @@
  *   shared NN = one vertical <section> stack, files ordered by .M
  *   .html body = exactly one <section>...</section> (may nest <section>s)
  *   .md body   = raw Markdown (wrapped here as an inline text/template)
+ *
+ * Preview overlay (used only by the GUI editor, editor/server/plugin.js): pass
+ * `slides({ overlay })`, where `overlay.get(id)` returns { 'slides/<file>': text }
+ * for unsaved editor buffers. A request for `/?__preview=<id>` then assembles
+ * from those buffers instead of the files on disk. Without an overlay, or
+ * without the query parameter, assembly is unchanged.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -40,7 +46,7 @@ function injectAttrs(html, slug) {
 	return html.replace(/<section(\s|>)/i, `<section id="${slug}" data-slug="${slug}"$1`);
 }
 
-function assemble(root) {
+function assemble(root, read = (file) => fs.readFileSync(file, 'utf8')) {
 	const dir = path.join(root, DIR);
 	if (!fs.existsSync(dir)) return '';
 
@@ -59,7 +65,7 @@ function assemble(root) {
 	const out = [];
 	for (const [, items] of [...groups.entries()].sort((a, b) => a[0] - b[0])) {
 		const sections = items.map(({ f, meta }) => {
-			const raw = fs.readFileSync(path.join(dir, f), 'utf8');
+			const raw = read(path.join(dir, f));
 			return meta.ext === 'md'
 				? renderMd(raw, meta.slug)
 				: injectAttrs(raw.trim(), meta.slug);
@@ -73,7 +79,17 @@ function assemble(root) {
 	return out.join('\n');
 }
 
-export default function slidesPlugin() {
+// Reader that prefers the overlay's unsaved buffers, keyed 'slides/<file>'.
+function overlayReader(buffers) {
+	return (file) => buffers[`${DIR}/${path.basename(file)}`] ?? fs.readFileSync(file, 'utf8');
+}
+
+function previewId(url) {
+	if (!url || !url.includes('__preview=')) return null;
+	return new URL(url, 'http://localhost').searchParams.get('__preview');
+}
+
+export default function slidesPlugin({ overlay } = {}) {
 	let root = process.cwd();
 	return {
 		name: 'deck-slides',
@@ -83,12 +99,14 @@ export default function slidesPlugin() {
 		},
 		transformIndexHtml: {
 			order: 'pre',
-			handler(html) {
+			handler(html, ctx) {
 				if (!html.includes(MARKER)) {
 					this?.warn?.(`[deck-slides] "${MARKER}" not found in index.html - no slides injected`);
 					return html;
 				}
-				return html.replace(MARKER, () => assemble(root));
+				const id = overlay && previewId(ctx?.originalUrl);
+				const buffers = id ? overlay.get(id) : null;
+				return html.replace(MARKER, () => (buffers ? assemble(root, overlayReader(buffers)) : assemble(root)));
 			},
 		},
 		configureServer(server) {

@@ -15,63 +15,27 @@
 // documentation of shared-styles.js (components import the real file, never
 // copy from the doc) - not checked here, since it holds no CSS of its own.
 
-import { readFile } from 'fs/promises';
+//
+// The comparison itself lives in lib/lint.js, shared with the GUI editor's
+// Problems panel (editor/server/lint.js).
+
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
+import { checkSharedVocabulary } from './lib/lint.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
 
-const DECK_CSS = resolve(root, 'deck.css');
-const SHARED_STYLES_JS = resolve(root, 'src/components/shared-styles.js');
-const LIGHT_DOM_PREFIX = '.reveal .slides section ';
+const { names: sharedNames, drift } = await checkSharedVocabulary(root);
 
-function extractRegions(text) {
-	const regions = new Map();
-	const re = /\/\*\s*SHARED-VOCAB:start\s+(\S+)\s*\*\/([\s\S]*?)\/\*\s*SHARED-VOCAB:end\s*\*\//g;
-	let match;
-	while ((match = re.exec(text))) {
-		const [, name, body] = match;
-		if (regions.has(name)) {
-			throw new Error(`duplicate SHARED-VOCAB region "${name}"`);
-		}
-		regions.set(name, body);
-	}
-	return regions;
+for (const { name, deck, shared } of drift) {
+	console.error(`✗ "${name}" has drifted between deck.css and src/components/shared-styles.js\n`);
+	console.error(`  deck.css:\n    ${deck}\n`);
+	console.error(`  shared-styles.js:\n    ${shared}\n`);
+	console.error(`  Fix shared-styles.js to match deck.css, never the reverse.\n`);
 }
 
-function normalize(body) {
-	return body
-		.replace(/\/\*[\s\S]*?\*\//g, ' ')            // strip comments (docs are allowed to differ)
-		.split(LIGHT_DOM_PREFIX).join('')             // deck.css's only mechanical difference
-		.replace(/\s+/g, ' ')
-		.trim();
-}
-
-const [deckCss, sharedStylesJs] = await Promise.all([
-	readFile(DECK_CSS, 'utf8'),
-	readFile(SHARED_STYLES_JS, 'utf8'),
-]);
-
-const deckRegions = extractRegions(deckCss);
-const sharedRegions = extractRegions(sharedStylesJs);
-
-const sharedNames = [...deckRegions.keys()].filter((name) => sharedRegions.has(name));
-
-let failed = false;
-for (const name of sharedNames) {
-	const deckNormalized = normalize(deckRegions.get(name));
-	const sharedNormalized = normalize(sharedRegions.get(name));
-	if (deckNormalized !== sharedNormalized) {
-		failed = true;
-		console.error(`✗ "${name}" has drifted between deck.css and src/components/shared-styles.js\n`);
-		console.error(`  deck.css:\n    ${deckNormalized}\n`);
-		console.error(`  shared-styles.js:\n    ${sharedNormalized}\n`);
-		console.error(`  Fix shared-styles.js to match deck.css, never the reverse.\n`);
-	}
-}
-
-if (failed) {
+if (drift.length) {
 	process.exit(1);
 }
 
