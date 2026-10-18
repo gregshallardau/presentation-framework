@@ -18,6 +18,14 @@ const SKIP = new Set([
 	'.vite',
 ]);
 
+const BASE_SLIDES = new Set([
+	'README.md',
+	'000-title.html',
+	'010-intro.md',
+	'020-architecture.html',
+	'030-live-demo.html',
+]);
+
 const git = (root, ...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
 
 /** A copy of the repo in a temp dir, committed into a fresh Git repo. */
@@ -27,6 +35,11 @@ export function fixture() {
 		recursive: true,
 		filter: (src) => !SKIP.has(path.basename(src)) || path.dirname(src) !== REPO,
 	});
+	// The tests are written against the framework's four example slides; drop
+	// any slides a deck has added since, so assertions stay deterministic.
+	for (const file of fs.readdirSync(path.join(root, 'slides'))) {
+		if (!BASE_SLIDES.has(file)) fs.rmSync(path.join(root, 'slides', file));
+	}
 	fs.symlinkSync(path.join(REPO, 'node_modules'), path.join(root, 'node_modules'), 'dir');
 	fs.appendFileSync(path.join(root, '.gitignore'), '\nnode_modules\n');
 	git(root, 'init', '-q', '-b', 'main');
