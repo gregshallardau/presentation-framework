@@ -14,6 +14,7 @@
  * and UI helpers.
  */
 import { createProbe } from './probe.js';
+import { closeMenu, openMenu } from './context-menu.js';
 import {
 	EASINGS,
 	FRAGMENT_EFFECTS,
@@ -24,6 +25,8 @@ import {
 	mdPlacementWarning,
 	parseStartTag,
 	readTarget,
+	replaceInnerHtml,
+	replaceMdText,
 	unfragmentChange,
 } from './source-edit.js';
 
@@ -49,6 +52,9 @@ export function createAnimator(host) {
 	/* ── Frame wiring ───────────────────────────────────────────────── */
 
 	let frameChanged = () => {};
+	// After an edit the reloaded slide shows every step, so animated (hidden)
+	// elements stay visible and right-clickable.
+	let showAllSteps = false;
 	function onFrameReady(win) {
 		probe = createProbe(win);
 		frameChanged();
@@ -63,6 +69,18 @@ export function createAnimator(host) {
 		deck.on('fragmentshown', () => isOpen() && markStep());
 		deck.on('fragmenthidden', () => isOpen() && markStep());
 		win.addEventListener('resize', () => highlight && drawHighlight());
+		win.document.addEventListener('pointerdown', closeMenu, true);
+		probe.onContextMenu((info) =>
+			info.edit ? attempt(editText)(info.element) : contextMenu(info)
+		);
+		if (showAllSteps) {
+			showAllSteps = false;
+			const steps = probe.steps();
+			if (steps.length) {
+				const { h, v } = deck.getIndices();
+				host.quietSlide({ h, v, f: steps[steps.length - 1].index });
+			}
+		}
 		refresh();
 	}
 
@@ -230,9 +248,10 @@ export function createAnimator(host) {
 		}
 		for (const [path, list] of byPath) {
 			const buffer = await host.buffer(path);
-			host.setContent(path, applyEdits(buffer.content, list));
+			await host.setContent(path, applyEdits(buffer.content, list));
 		}
 		if (message) toast(message);
+		showAllSteps = true;
 		host.refreshPreview();
 	}
 
@@ -252,14 +271,14 @@ export function createAnimator(host) {
 	/* ── Fragment structure ─────────────────────────────────────────── */
 
 	/** Rewrites every fragment on the slide to explicit step indices from `plan` (arrays of elements). */
-	async function writeSteps(plan, removed = [], message) {
+	async function writeSteps(plan, removed = [], message, effects = new Map()) {
 		ensureCurrent();
 		const edits = [];
 		for (const [i, elements] of plan.filter((s) => s.length).entries()) {
 			for (const elm of elements) {
 				const src = await elementSource(elm);
 				const current = readTarget((await host.buffer(src.path)).content, src.target);
-				const effect = fragmentOf(current).effect || 'fade-in';
+				const effect = effects.get(elm) || fragmentOf(current).effect || 'fade-in';
 				edits.push({ ...src, change: fragmentChange(current, { effect, index: i }) });
 			}
 		}
@@ -339,6 +358,230 @@ export function createAnimator(host) {
 		const slide = slideSource();
 		if (!slide) return null;
 		return readTarget((await host.buffer(slide.path)).content, slide.target).attrs;
+	}
+
+	/** Gives an element an effect: changes it on a fragment, or adds a new last step. */
+	async function animateAs(elm, effect) {
+		elm = await live(elm);
+		if (elm.classList.contains('fragment')) return setEffect(elm, effect);
+		const src = await elementSource(elm);
+		if (src.warning) toast(src.warning, true);
+		const steps = plan();
+		steps.push([elm]);
+		await writeSteps(steps, [], `Animated with ${effect}`, new Map([[elm, effect]]));
+	}
+
+	async function toggleClass(elm, cls) {
+		elm = await live(elm);
+		const src = await elementSource(elm);
+		const current = readTarget((await host.buffer(src.path)).content, src.target);
+		const on = !current.classes.includes(cls);
+		await commit([{ ...src, change: on ? { addClass: [cls] } : { removeClass: [cls] } }]);
+	}
+
+	/**
+	 * Edits an element's text in the preview and writes it back: the tag's
+	 * content in HTML, the line's text in Markdown (markers and comments kept).
+	 */
+	async function editText(elm) {
+		elm = await live(elm);
+		const src = await elementSource(elm);
+		const text = (await host.buffer(src.path)).content;
+		const write = (html) =>
+			src.target.kind === 'html'
+				? replaceInnerHtml(text, src.target.offset, html)
+				: replaceMdText(text, src.target.line, html);
+		write(elm.innerHTML); // refuses block content or multi-line paragraphs before editing starts
+		const html = await probe.editInline(elm);
+		if (html === null) return;
+		await host.setContent(src.path, write(html));
+		host.refreshPreview();
+	}
+
+	async function editTiming(elm) {
+		elm = await live(elm);
+		const src = await elementSource(elm);
+		const { attrs } = readTarget((await host.buffer(src.path)).content, src.target);
+		const body = el('div');
+		const input = (name, label, placeholder) => {
+			const node = el('input', 'input');
+			node.type = 'number';
+			node.min = '0';
+			node.step = '0.1';
+			node.placeholder = placeholder;
+			node.value = attrs[name] ?? '';
+			node.dataset.attr = name;
+			body.append(el('label', null, label), node);
+		};
+		input('data-auto-animate-duration', 'Duration (seconds)', 'slide default');
+		input('data-auto-animate-delay', 'Delay (seconds)', '0');
+		const easing = el('select', 'input');
+		easing.dataset.attr = 'data-auto-animate-easing';
+		for (const value of ['', ...EASINGS]) {
+			const option = el('option', null, value || 'slide default');
+			option.value = value;
+			easing.append(option);
+		}
+		easing.value = attrs['data-auto-animate-easing'] ?? '';
+		body.append(el('label', null, 'Easing'), easing);
+		host.dialog(`Auto-animate timing · <${elm.tagName.toLowerCase()}>`, body, [
+			{ label: 'Cancel', run: (d) => d.close() },
+			{
+				label: 'Apply',
+				primary: true,
+				run: async (d) => {
+					const set = {};
+					for (const node of body.querySelectorAll('[data-attr]'))
+						set[node.dataset.attr] = node.value || null;
+					d.close();
+					await attempt(setElementAttrs)(elm, set, 'Timing updated');
+				},
+			},
+		]);
+	}
+
+	/* ── Right-click menus ──────────────────────────────────────────── */
+
+	async function contextMenu({ element, slide, x, y }) {
+		// A right-click on a preview that is about to reload: wait, then use the
+		// same element in the new document.
+		if (!host.frameCurrent()) {
+			const id = element && identity(element, slide);
+			await settle();
+			slide = probe.current();
+			element = id ? find(id) : null;
+		}
+		const deck = host.reveal();
+		if (!deck || !probe) return;
+		const state = await probe.autoAnimateState().catch(() => null);
+		const attrs = (await slideAttrs().catch(() => null)) || {};
+		const items = element
+			? [
+					...(await elementItems(element, state)),
+					{ label: 'Slide', items: slideItems(slide, attrs) },
+				]
+			: slideItems(slide, attrs);
+		openMenu(items, { x, y });
+	}
+
+	async function elementItems(elm, state) {
+		let current;
+		try {
+			const src = await elementSource(elm);
+			current = readTarget((await host.buffer(src.path)).content, src.target);
+		} catch (error) {
+			return [
+				{ label: error.message, disabled: true },
+				{ label: 'Show in source', run: () => select(elm) },
+			];
+		}
+		const fragment = fragmentOf(current);
+		const steps = probe.steps();
+		const position = steps.findIndex((s) => s.elements.includes(elm));
+		const paired =
+			state?.incoming?.pairs.some((p) => p.to === elm) ||
+			state?.outgoing?.pairs.some((p) => p.from === elm);
+		const classes = host.catalog()
+			? [...host.catalog().classes.deck, 'r-fit-text', 'r-stretch']
+			: [];
+		const d = probe.describe(elm);
+		return [
+			{ label: `<${d.tag}> ${d.text.slice(0, 32)}`, disabled: true },
+			{
+				label: 'Animate',
+				hint: fragment.fragment ? fragment.effect : '',
+				items: [
+					...FRAGMENT_EFFECTS.map((effect) => ({
+						label: effect,
+						checked: fragment.fragment && fragment.effect === effect,
+						run: attempt(() => animateAs(elm, effect)),
+					})),
+					{ separator: true },
+					{
+						label: 'Step',
+						disabled: !fragment.fragment,
+						items: [
+							...steps.map((_, i) => ({
+								label: `Step ${i + 1}`,
+								checked: i === position,
+								run: attempt(() => moveToStep(elm, i)),
+							})),
+							{ label: 'New last step', run: attempt(() => moveToStep(elm, steps.length)) },
+						],
+					},
+					{
+						label: 'Stop animating',
+						disabled: !fragment.fragment,
+						run: attempt(() => removeFragment(elm)),
+					},
+				],
+			},
+			{
+				label: 'Auto-animate',
+				items: [
+					{ label: 'Link to next slide…', run: attempt(() => linkToNext(elm)) },
+					{ label: 'Unlink', disabled: !paired, run: attempt(() => unlink(elm)) },
+					{ label: 'Timing…', run: attempt(() => editTiming(elm)) },
+					{
+						label: 'Show morphs on this slide',
+						checked: highlight,
+						run: () => setHighlight(!highlight),
+					},
+				],
+			},
+			{
+				label: 'Style',
+				filter: true,
+				disabled: !classes.length,
+				items: classes.map((cls) => ({
+					label: cls,
+					checked: current.classes.includes(cls),
+					hover: (on) => !current.classes.includes(cls) && probe.previewClass(elm, cls, on),
+					run: attempt(() => toggleClass(elm, cls)),
+				})),
+			},
+			{ label: 'Edit text', hint: 'double-click', run: attempt(() => editText(elm)) },
+			{ separator: true },
+			{ label: 'Show in source', run: () => select(elm) },
+			{
+				label: 'Open in timeline',
+				run: () => {
+					toggle(true);
+					select(elm);
+				},
+			},
+		];
+	}
+
+	function slideItems(slideEl, attrs) {
+		const auto = 'data-auto-animate' in attrs;
+		const transitions = ['', 'none', 'fade', 'slide', 'convex', 'concave', 'zoom'];
+		const items = [
+			{
+				label: 'Transition',
+				hint: attrs['data-transition'] || 'deck default',
+				items: transitions.map((t) => ({
+					label: t || 'deck default',
+					checked: (attrs['data-transition'] || '') === t,
+					run: attempt(() => setSlideAttrs({ 'data-transition': t || null })),
+				})),
+			},
+			{
+				label: 'Auto-animate',
+				checked: auto,
+				run: attempt(() =>
+					setSlideAttrs(
+						{ 'data-auto-animate': auto ? null : true },
+						auto ? 'Auto-animate off' : 'Auto-animate on'
+					)
+				),
+			},
+			{ label: 'Make next rung', run: attempt(makeNextRung) },
+		];
+		const src = slideSource(slideEl);
+		const model = src && host.deck().slides.find((s) => s.path === src.path);
+		if (model) items.push({ separator: true }, ...host.slideCommands(model));
+		return items;
 	}
 
 	/* ── Auto-animate tools ─────────────────────────────────────────── */
@@ -433,7 +676,7 @@ export function createAnimator(host) {
 			const copy = lines.slice(slide.md.from - 1, last);
 			lines.splice(last, 0, '', '--', '', ...copy);
 			text = lines.join('\n');
-			host.setContent(slide.path, text);
+			await host.setContent(slide.path, text);
 			toast('Added the next rung as a vertical sub-slide');
 			host.refreshPreview();
 			return;
@@ -957,5 +1200,6 @@ export function createAnimator(host) {
 		},
 		highlight: () => highlight,
 		render,
+		contextMenu,
 	};
 }

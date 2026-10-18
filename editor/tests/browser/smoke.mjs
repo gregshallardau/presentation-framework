@@ -111,7 +111,7 @@ try {
 	});
 
 	await step('drag a slide before another', async () => {
-		await wait(800); // let the slide list settle after the last change
+		await wait(1600); // let the slide list settle (deck reload 0.7 s, lint 1.2 s)
 		await page
 			.locator('.slide-item[data-file="030-live-demo.html"]')
 			.dragTo(page.locator('.slide-item[data-file="010-intro.md"]'), {
@@ -121,7 +121,7 @@ try {
 	});
 
 	await step('drop on the middle of a slide to stack it', async () => {
-		await wait(800); // let the slide list settle after the last change
+		await wait(1600); // let the slide list settle (deck reload 0.7 s, lint 1.2 s)
 		const target = page.locator('.slide-item[data-file="020-architecture.html"]');
 		const box = await target.boundingBox();
 		await page
@@ -322,6 +322,133 @@ try {
 			'saved'
 		);
 		await page.click('[data-tl="close"]');
+	});
+
+	const current = () =>
+		until(() => page.evaluate(() => window.deckStudio.previewCurrent()), 'preview current');
+	const menu = async (locator, ...path) => {
+		await current();
+		await locator.click({ button: 'right' });
+		await page.waitForSelector('.ctx-menu');
+		for (const [depth, label] of path.entries()) {
+			const item = page
+				.locator('.ctx-menu')
+				.nth(depth)
+				.locator('.ctx-item', { hasText: label })
+				.first();
+			if (depth < path.length - 1) await item.hover();
+			else await item.click();
+		}
+	};
+
+	await step('right-click an element to animate it', async () => {
+		await page.click('.slide-item[data-file="000-title.html"]');
+		await until(
+			async () => (await page.textContent('#preview-document')).startsWith('slides/000-title.html'),
+			'title slide'
+		);
+		await wait(600);
+		await menu(frame.locator('h1').first(), 'Animate', 'fade-up');
+		await until(
+			async () => /<h1[^>]*class="[^"]*fragment fade-up/.test(await buffer('000-title.html')),
+			'fragment from the menu'
+		);
+	});
+
+	await step('right-click to toggle a style class', async () => {
+		await menu(frame.locator('h1').first(), 'Style', 'text-muted');
+		await until(
+			async () => /class="[^"]*text-muted/.test(await buffer('000-title.html')),
+			'class on'
+		);
+		await menu(frame.locator('h1').first(), 'Style', 'text-muted');
+		await until(async () => !/text-muted/.test(await buffer('000-title.html')), 'class off');
+	});
+
+	await step('double-click to edit text, Esc to cancel', async () => {
+		const before = await buffer('000-title.html');
+		await current();
+		await frame.locator('h1').first().dblclick();
+		await page.keyboard.type('Nope');
+		await page.keyboard.press('Escape');
+		await wait(500);
+		assert.equal(await buffer('000-title.html'), before, 'Esc changes nothing');
+		await current();
+		await frame.locator('h1').first().dblclick();
+		await page.keyboard.type('Edited title');
+		await page.keyboard.press('Enter');
+		await until(
+			async () => />Edited title<\/h1>/.test(await buffer('000-title.html')),
+			'text written back'
+		);
+	});
+
+	await step('edit Markdown text in place and keep its formatting', async () => {
+		fx.write('slides/050-md.md', '## Plain\n\n- keep **bold** here\n');
+		await until(
+			async () => (await page.locator('.slide-item[data-file="050-md.md"]').count()) === 1,
+			'md slide listed'
+		);
+		await page.click('.slide-item[data-file="050-md.md"]');
+		await until(
+			async () => (await page.textContent('#preview-document')).startsWith('slides/050-md.md'),
+			'md slide'
+		);
+		await wait(600);
+		const item = frame.locator('li', { hasText: 'keep' });
+		await current();
+		await item.dblclick();
+		await page.keyboard.press('End');
+		await page.keyboard.type(' now');
+		await page.keyboard.press('Enter');
+		await until(
+			async () => (await buffer('050-md.md')).includes('- keep **bold** here now'),
+			'markdown kept'
+		);
+	});
+
+	await step('right-click empty slide space for slide actions', async () => {
+		await current();
+		await frame
+			.locator('.slides')
+			.click({ button: 'right', position: { x: 20, y: 20 }, force: true });
+		await page.waitForSelector('.ctx-menu');
+		await page.locator('.ctx-menu').first().locator('.ctx-item', { hasText: 'Transition' }).hover();
+		await page.locator('.ctx-menu').nth(1).locator('.ctx-item', { hasText: 'zoom' }).click();
+		await until(
+			async () => /<!-- \.slide: data-transition="zoom" -->/.test(await buffer('050-md.md')),
+			'slide transition'
+		);
+	});
+
+	await step('Ctrl+Z in the code pane undoes a menu edit', async () => {
+		await page.click('.monaco-editor .view-line >> nth=0');
+		await page.keyboard.press('Control+z');
+		await until(async () => !(await buffer('050-md.md')).includes('data-transition'), 'undone');
+		await page.keyboard.press('Control+s');
+	});
+
+	await step('link across slides from the right-click menu', async () => {
+		await page.click('.slide-item[data-file="040.1-growth.html"]');
+		await until(
+			async () =>
+				(await page.textContent('#preview-document')).startsWith('slides/040.1-growth.html'),
+			'first rung'
+		);
+		await wait(600);
+		await menu(
+			frame.locator('p', { hasText: 'Last quarter' }),
+			'Auto-animate',
+			'Link to next slide'
+		);
+		await picking();
+		await frame.locator('p', { hasText: 'This quarter' }).click();
+		await until(
+			async () =>
+				/data-id="last-quarter"/.test(await buffer('040.1-growth.html')) &&
+				/data-id="last-quarter"/.test(await buffer('040.2-growth-2.html')),
+			'linked from the menu'
+		);
 	});
 
 	await step('build the deck', async () => {

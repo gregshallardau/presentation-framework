@@ -82,6 +82,40 @@ history follows them.
 
 Unsaved slide edits are saved first, because these actions rename files.
 
+## Editing in the preview
+
+You don't have to use the code pane: **right-click** anything on the slide in
+the preview.
+
+| Right-click… | Menu |
+|---|---|
+| **An element** | **Animate** ▸ any fragment effect (✓ marks the current one; on a static element it becomes a new last step), *Step* ▸, *Stop animating* · **Auto-animate** ▸ *Link to next slide…*, *Unlink*, *Timing…* (duration, delay, easing), *Show morphs* · **Style** ▸ deck.css classes and Reveal's `r-fit-text` / `r-stretch` (type to filter; hovering previews the class on the slide, clicking toggles it) · **Edit text** · *Show in source* · *Open in timeline* · **Slide** ▸ the slide menu |
+| **Empty slide space** | **Transition** ▸, **Auto-animate** on/off, *Make next rung*, *Add slide after*, *Duplicate slide*, *Delete slide…*, *Show slide source* |
+
+**Double-click** an element to edit its text in place. Enter (or clicking
+away) keeps the change, Esc cancels it, and Shift+Enter adds a line break.
+Bold, italic, code and links survive the round trip, including back to
+Markdown (`**bold**`, `[text](#/slug)`). The list marker, heading hashes and
+any `.element` comments on the line are kept.
+
+Every menu action and text edit goes into the open file as one undoable
+change: Ctrl+Z in the code pane undoes it. It shows in the preview straight
+away and saves with Ctrl+S or *Save slides*. After an animation edit, the
+preview shows the slide with every step revealed, so animated elements stay
+visible and right-clickable.
+
+Shift + right-click opens the browser's own menu instead.
+
+**Limits:**
+- Text editing works on elements whose source holds text and inline
+  formatting only.
+- An element with nested blocks (a `<div>` of paragraphs, a whole list) is
+  refused with a pointer to the code pane. So is a Markdown paragraph that
+  runs over several source lines, and anything inside a `<deck-*>`
+  component.
+- Elements a script creates at runtime have no source tag, so their menu
+  only offers *Show in source*.
+
 ## Animation
 
 Deck studio edits the motion Reveal already has: fragments, slide transitions
@@ -260,9 +294,10 @@ editor/server/            the API (Node, no extra dependencies)
   plugin.js               routes, security, static files, Monaco
   files.js deck.js slide-actions.js overlay.js annotate.js config.js catalog.js lint.js git.js jobs.js
 editor/static/            the app: index.html, editor.js, tokenizers.js, editor.css
-  animate.js              animation timeline + auto-animate tools
+  animate.js              animation timeline, auto-animate tools, right-click menus
+  context-menu.js         the menu component (submenus, filter, keyboard)
   probe.js                inside the preview: picking, outlines, steps, Reveal's auto-animate pairs
-  source-edit.js          reads/writes Reveal attributes in HTML tags and Markdown comments
+  source-edit.js          reads/writes Reveal attributes and inline text in HTML tags and Markdown lines
 editor/tests/             node:test suites + browser/smoke.mjs
 ```
 

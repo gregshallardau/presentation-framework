@@ -1177,7 +1177,9 @@
 			win.addEventListener('error', (event) =>
 				setRenderState('Slide script error: ' + event.message, 'failed')
 			);
-			state.animator?.onFrameReady(win);
+			// Loaded with the first preview, so right-click editing works straight away.
+			if (state.animator) state.animator.onFrameReady(win);
+			else withAnimator(() => {});
 		};
 		wait();
 	}
@@ -1270,6 +1272,31 @@
 					if (await saveAll(isSlide)) toast('Saved the slide files');
 				},
 				layout: applyLayout,
+				dialog,
+				catalog: () => state.catalog,
+				slideCommands: (slide) => [
+					{ label: 'Add slide after', run: () => newSlide({ where: { after: slide.slug } }) },
+					{
+						label: 'Duplicate slide',
+						run: () => slideAction({ action: 'duplicate', file: slide.file }, 'Duplicated slide'),
+					},
+					{
+						label: 'Delete slide…',
+						run: async () => {
+							const choice = await confirmDialog(
+								'Delete slide?',
+								`Move ${slide.path} to .editor-trash/? You can restore it from there.`,
+								[
+									{ label: 'Cancel', value: false },
+									{ label: 'Delete', value: true, danger: true },
+								]
+							);
+							if (choice)
+								await slideAction({ action: 'delete', file: slide.file }, 'Deleted slide');
+						},
+					},
+					{ label: 'Show slide source', run: () => openFile(slide.path) },
+				],
 			});
 			const win = frameWindow();
 			if (reveal()) state.animator.onFrameReady(win);
@@ -2818,6 +2845,11 @@
 		timeline: () => withAnimator((animator) => animator.toggle()),
 		'aa-highlight': () => withAnimator((animator) => animator.setHighlight(!animator.highlight())),
 		'editor-find': () => state.editor?.getAction('actions.find')?.run(),
+	};
+	// Read-only hooks for the browser smoke test (editor/tests/browser/smoke.mjs).
+	window.deckStudio = {
+		previewCurrent: () =>
+			state.frameVersion === state.editVersion && !!reveal() && !!state.animator,
 	};
 	async function init() {
 		hydrate();

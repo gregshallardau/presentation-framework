@@ -258,12 +258,112 @@ export function createProbe(win) {
 		return aa;
 	}
 
+	/* ── Right-click editing ────────────────────────────────────────── */
+
+	/**
+	 * Calls handler({ element | null, slide, x, y, edit }) on a right-click
+	 * (edit: false) or a double-click on an element (edit: true). x/y are in
+	 * the editor page's coordinates. Shift + right-click keeps the browser menu.
+	 */
+	function onContextMenu(handler) {
+		const toPage = (event) => {
+			const box = win.frameElement.getBoundingClientRect();
+			return { x: box.left + event.clientX, y: box.top + event.clientY };
+		};
+		const editing = () => doc.activeElement?.isContentEditable;
+		doc.addEventListener(
+			'contextmenu',
+			(event) => {
+				if (event.shiftKey || editing()) return;
+				const slide = current();
+				if (!slide) return;
+				event.preventDefault();
+				const found = selectable(event.target);
+				const element = found && slide.contains(found) ? found : null;
+				if (element) flash(element, '#315de3');
+				handler({ element, slide, edit: false, ...toPage(event) });
+			},
+			true
+		);
+		doc.addEventListener(
+			'dblclick',
+			(event) => {
+				if (editing()) return;
+				const found = selectable(event.target);
+				if (!found || !current()?.contains(found)) return;
+				event.preventDefault();
+				handler({ element: found, slide: current(), edit: true, ...toPage(event) });
+			},
+			true
+		);
+	}
+
+	/**
+	 * Edits an element's text in place. Enter (or clicking away) commits and
+	 * resolves the new innerHTML; Esc restores it and resolves null.
+	 * Shift+Enter inserts a line break. Reveal ignores keys while a
+	 * contenteditable has focus; key events are also kept from bubbling.
+	 */
+	function editInline(el) {
+		return new Promise((resolve) => {
+			const before = el.innerHTML;
+			const style = el.getAttribute('style');
+			el.setAttribute('contenteditable', 'true');
+			el.style.outline = '2px solid #315de3';
+			el.style.outlineOffset = '4px';
+			el.style.cursor = 'text';
+			el.focus();
+			const range = doc.createRange();
+			range.selectNodeContents(el);
+			const selection = win.getSelection();
+			selection.removeAllRanges();
+			selection.addRange(range);
+			let settled = false;
+			const done = (value) => {
+				if (settled) return;
+				settled = true;
+				el.removeEventListener('keydown', key, true);
+				el.removeEventListener('blur', blur);
+				el.removeAttribute('contenteditable');
+				if (style === null) el.removeAttribute('style');
+				else el.setAttribute('style', style);
+				selection.removeAllRanges();
+				resolve(value);
+			};
+			const key = (event) => {
+				event.stopPropagation();
+				if (event.key === 'Escape') {
+					event.preventDefault();
+					el.innerHTML = before;
+					done(null);
+				} else if (event.key === 'Enter' && event.shiftKey) {
+					event.preventDefault();
+					doc.execCommand('insertLineBreak');
+				} else if (event.key === 'Enter') {
+					event.preventDefault();
+					done(el.innerHTML === before ? null : el.innerHTML);
+				}
+			};
+			const blur = () => done(el.innerHTML === before ? null : el.innerHTML);
+			el.addEventListener('keydown', key, true);
+			el.addEventListener('blur', blur);
+		});
+	}
+
+	/** Temporarily shows (or hides) a class, for hover previews in menus. */
+	function previewClass(el, cls, on) {
+		el.classList.toggle(cls, on);
+	}
+
 	function flash(el, color = '#f59e0b') {
 		draw([{ el, color, fill: true }], 'flash');
 		win.setTimeout(() => clear('flash'), 900);
 	}
 
 	return {
+		onContextMenu,
+		editInline,
+		previewClass,
 		stopPicking,
 		draw,
 		clear,

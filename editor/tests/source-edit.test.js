@@ -180,3 +180,54 @@ describe('Markdown comments', () => {
 		assert.equal(findMdLine('- a\n- a\n', 1, 2, { tag: 'li', text: 'a', nth: 1 }), 2);
 	});
 });
+
+describe('inline text editing', async () => {
+	const { elementRange, replaceInnerHtml, replaceMdText, inlineHtmlToMd } =
+		await import('../static/source-edit.js');
+	const SRC = `<section>
+	<div class="a"><div>inner</div><!-- </div> --></div>
+	<p class="lead">Hello <strong>bold</strong> world</p>
+	<img src="x.png">
+	<ul><li>One</li></ul>
+</section>`;
+
+	it('finds the content range across nested same-name tags and comments', () => {
+		const at = SRC.indexOf('<div class="a">');
+		const range = elementRange(SRC, at);
+		assert.equal(SRC.slice(range.innerStart, range.innerEnd), '<div>inner</div><!-- </div> -->');
+		assert.equal(elementRange(SRC, SRC.indexOf('<img')), null);
+	});
+
+	it('replaces inline content, keeps attributes, refuses block content', () => {
+		const at = SRC.indexOf('<p');
+		const next = replaceInnerHtml(SRC, at, 'Hi <b>there</b> <span data-studio-src="x">you</span>');
+		assert.match(next, /<p class="lead">Hi <b>there<\/b> <span>you<\/span><\/p>/);
+		assert.throws(() => replaceInnerHtml(SRC, SRC.indexOf('<ul'), 'x'), /block markup/);
+		assert.throws(() => replaceInnerHtml(SRC, SRC.indexOf('<div class="a">'), 'x'), /block markup/);
+	});
+
+	it('converts inline HTML back to Markdown', () => {
+		assert.equal(
+			inlineHtmlToMd('A <strong>b</strong> <em>c</em> <code>d</code> <a href="#/x">e</a> &amp; f'),
+			'A **b** *c* `d` [e](#/x) & f'
+		);
+	});
+
+	it('replaces a Markdown line between its marker and comments', () => {
+		const md =
+			'- <!-- .element: class="fragment" --> Old **text** <!-- .element: data-id="a" -->\n- next\n';
+		assert.equal(
+			replaceMdText(md, 1, 'New <strong>text</strong>').split('\n')[0],
+			'- <!-- .element: class="fragment" --> New **text** <!-- .element: data-id="a" -->'
+		);
+		assert.equal(
+			replaceMdText('## Title\n\nBody\n', 1, 'Better “title”'),
+			'## Better "title"\n\nBody\n'
+		);
+	});
+
+	it('refuses paragraphs spanning lines and code fences', () => {
+		assert.throws(() => replaceMdText('First line\nsecond line\n', 1, 'x'), /several source lines/);
+		assert.throws(() => replaceMdText('```\ncode\n```\n', 2, 'x'), /code block/);
+	});
+});

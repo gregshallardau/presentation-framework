@@ -2327,3 +2327,97 @@ kbd {
 	border-radius: 5px;
 	margin: 0 0 8px;
 }
+
+/* ── Right-click menus (context-menu.js) ───────────────────────────────── */
+.ctx-layer {
+	position: fixed;
+	inset: 0;
+	z-index: 200;
+	pointer-events: none;
+}
+.ctx-menu {
+	position: fixed;
+	pointer-events: auto;
+	min-width: 220px;
+	max-width: 320px;
+	max-height: min(70vh, 520px);
+	overflow-y: auto;
+	padding: 5px;
+	background: var(--bg);
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	box-shadow: var(--shadow);
+	outline: none;
+}
+.ctx-menu:focus-visible {
+	outline: none;
+}
+.ctx-item {
+	display: grid;
+	grid-template-columns: 16px minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 6px;
+	width: 100%;
+	padding: 6px 10px 6px 6px;
+	border-radius: 5px;
+	font-size: 12px;
+	text-align: left;
+}
+.ctx-item.has-sub::after {
+	content: '›';
+	grid-column: 3;
+	grid-row: 1;
+	color: var(--muted);
+	font-size: 14px;
+	line-height: 1;
+}
+.ctx-item.has-sub .ctx-hint {
+	display: none;
+}
+.ctx-item.active:not(:disabled) {
+	background: var(--accent-soft);
+	color: var(--accent);
+}
+.ctx-item:disabled {
+	opacity: 1;
+	color: var(--muted);
+}
+.ctx-check {
+	color: var(--accent);
+	font-weight: 700;
+	text-align: center;
+}
+.ctx-label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.ctx-hint {
+	font-size: 10px;
+	color: var(--muted);
+}
+.ctx-sep {
+	height: 1px;
+	margin: 4px 6px;
+	background: var(--border);
+}
+.ctx-filter {
+	width: 100%;
+	margin: 0 0 4px;
+	padding: 5px 8px;
+	font-size: 12px;
+	border: 1px solid var(--border);
+	border-radius: 5px;
+	background: var(--surface);
+}
+.ctx-empty {
+	padding: 6px 10px;
+	font-size: 11px;
+	color: var(--muted);
+}
+.preview-hint {
+	flex: 1;
+	text-align: center;
+	font-size: 10px;
+	color: var(--muted);
+}

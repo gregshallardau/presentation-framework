@@ -385,3 +385,168 @@ export function findMdLine(text, from, to, element) {
 	}
 	return candidates[element.nth || 0] ?? candidates[0] ?? null;
 }
+
+/* ── Inline text editing ─────────────────────────────────────────────── */
+
+const VOID = new Set([
+	'area',
+	'base',
+	'br',
+	'col',
+	'embed',
+	'hr',
+	'img',
+	'input',
+	'link',
+	'meta',
+	'source',
+	'track',
+	'wbr',
+]);
+export const INLINE = new Set([
+	'a',
+	'b',
+	'strong',
+	'i',
+	'em',
+	'code',
+	'span',
+	'br',
+	'sub',
+	'sup',
+	'mark',
+	'small',
+	's',
+	'u',
+]);
+
+/**
+ * The content range of the element whose start tag is at `offset`:
+ * { innerStart, innerEnd, end } - or null for a void / self-closing tag.
+ * Nested same-name tags are counted; comments and raw text are skipped.
+ */
+export function elementRange(text, offset) {
+	const tag = parseStartTag(text, offset);
+	if (VOID.has(tag.name) || tag.close.includes('/')) return null;
+	if (tag.name === 'script' || tag.name === 'style' || tag.name === 'textarea') {
+		const close = text.toLowerCase().indexOf(`</${tag.name}`, tag.end);
+		if (close < 0) throw new Error(`<${tag.name}> at ${offset} is never closed`);
+		return { innerStart: tag.end, innerEnd: close, end: text.indexOf('>', close) + 1 };
+	}
+	const re = new RegExp(`<!--[\\s\\S]*?-->|<(/?)${tag.name}(?=[\\s>/])[^>]*>`, 'gi');
+	re.lastIndex = tag.end;
+	let depth = 1;
+	let m;
+	while ((m = re.exec(text))) {
+		if (m[0].startsWith('<!--')) continue;
+		if (m[1]) depth--;
+		else if (!m[0].endsWith('/>')) depth++;
+		if (depth === 0) return { innerStart: tag.end, innerEnd: m.index, end: m.index + m[0].length };
+	}
+	throw new Error(`<${tag.name}> at ${offset} is never closed`);
+}
+
+const tagsIn = (html) =>
+	[...html.replace(/<!--[\s\S]*?-->/g, '').matchAll(/<\/?([a-zA-Z][\w-]*)/g)].map((m) =>
+		m[1].toLowerCase()
+	);
+
+/** Keeps inline tags (href on links only), unwraps everything else. */
+export function cleanInlineHtml(html) {
+	return html
+		.replace(/<!--[\s\S]*?-->/g, '')
+		.replace(/<(\/?)([a-zA-Z][\w-]*)([^>]*)>/g, (all, slash, name, attrs) => {
+			const tag = name.toLowerCase();
+			if (!INLINE.has(tag)) return '';
+			if (slash) return `</${tag}>`;
+			if (tag === 'a') {
+				const href = /\bhref\s*=\s*("[^"]*"|'[^']*')/.exec(attrs);
+				return href ? `<a href=${href[1]}>` : '<a>';
+			}
+			return tag === 'br' ? '<br>' : `<${tag}>`;
+		})
+		.replace(/&nbsp;/g, ' ');
+}
+
+/**
+ * Replaces the content of the HTML element at `offset` with `html` (inline
+ * markup only), keeping the source's surrounding whitespace. Refuses elements
+ * whose source holds block markup - those are edited in the code pane.
+ */
+export function replaceInnerHtml(text, offset, html) {
+	const range = elementRange(text, offset);
+	if (!range) throw new Error('This element has no text content to edit.');
+	const inner = text.slice(range.innerStart, range.innerEnd);
+	if (tagsIn(inner).some((name) => !INLINE.has(name)))
+		throw new Error('This element contains block markup; edit it in the code pane.');
+	const lead = /^\s*/.exec(inner)[0];
+	const trail = /\s*$/.exec(inner)[0];
+	return (
+		text.slice(0, range.innerStart) +
+		lead +
+		cleanInlineHtml(html).trim() +
+		trail +
+		text.slice(range.innerEnd)
+	);
+}
+
+const decode = (s) =>
+	s
+		.replace(/&lt;/g, '<')
+		.replace(/&gt;/g, '>')
+		.replace(/&quot;/g, '"')
+		.replace(/&#39;/g, "'")
+		.replace(/&amp;/g, '&');
+
+/** Inline HTML from the preview back to Markdown. */
+export function inlineHtmlToMd(html) {
+	let md = cleanInlineHtml(html)
+		.replace(/<(strong|b)>([\s\S]*?)<\/\1>/g, '**$2**')
+		.replace(/<(em|i)>([\s\S]*?)<\/\1>/g, '*$2*')
+		.replace(/<code>([\s\S]*?)<\/code>/g, '`$1`')
+		.replace(/<a href=(["'])(.*?)\1>([\s\S]*?)<\/a>/g, '[$3]($2)')
+		.replace(/<\/?(span|a)>/g, '');
+	md = md.replace(/\s*\n\s*/g, ' ');
+	return decode(md).trim();
+}
+
+/**
+ * Replaces the text of the Markdown block on `line` with `inlineHtml`
+ * (converted back to Markdown), keeping its list/heading marker and any
+ * `.element` comments. Refuses paragraphs that run onto the next line.
+ */
+export function replaceMdText(text, line, inlineHtml) {
+	const lines = text.split('\n');
+	const current = lines[line - 1];
+	if (current === undefined || !current.trim())
+		throw new Error('Could not find this element in the Markdown source.');
+	if (inFence(lines, line))
+		throw new Error('That line is inside a code block; edit it in the code pane.');
+	const lead = (LIST_OR_HEADING.exec(current) || [''])[0];
+	const next = lines[line] ?? '';
+	if (
+		!/^\s*#/.test(current) &&
+		next.trim() &&
+		!LIST_OR_HEADING.test(next) &&
+		!/^\s*(--\s*$|Note:|```|~~~|<!--|\||<)/.test(next)
+	)
+		throw new Error('This paragraph runs over several source lines; edit it in the code pane.');
+	let rest = current.slice(lead.length);
+	const opening = /^<!--\s*\.element:[\s\S]*?-->\s*/.exec(rest);
+	const head = opening ? opening[0] : '';
+	rest = rest.slice(head.length);
+	const closing = /\s*<!--[\s\S]*?-->\s*$/.exec(rest);
+	const tail = closing ? closing[0] : '';
+	const original = closing ? rest.slice(0, closing.index) : rest;
+	let replacement = inlineHtmlToMd(inlineHtml);
+	// Reveal's Markdown runs smartypants; keep straight punctuation if the source used it.
+	if (!/[‘’“”…–—]/.test(original))
+		replacement = replacement
+			.replace(/[‘’]/g, "'")
+			.replace(/[“”]/g, '"')
+			.replace(/…/g, '...')
+			.replace(/—/g, '---')
+			.replace(/–/g, '--');
+	lines[line - 1] = lead + head + replacement + tail;
+	return lines.join('\n');
+}

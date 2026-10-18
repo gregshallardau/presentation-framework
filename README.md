@@ -17,7 +17,8 @@ npm run build:deck # static export of the current deck -> deck-dist/  (for publi
 the left, the real deck live beside it (unsaved edits included), a drag-to-reorder
 slide list, an animation timeline for fragments, transitions and auto-animate
 (with an outline of exactly what morphs between slides), and inspectors for
-`deck.config.js`, skins and components. It follows
+`deck.config.js`, skins and components. Right-click any element in the preview
+to animate, style or edit it in place. It follows
 md-doc-pipeline's browser editor. See [`editor/README.md`](editor/README.md).
 
 `npm run build` (Reveal's own full build, regenerates `vendor/reveal.js/dist/`)

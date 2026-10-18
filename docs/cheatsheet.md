@@ -342,7 +342,9 @@ growing or rearranging across the deck's flow → auto-animate rungs.
 In deck studio (`npm run edit`), **Animate** lays these out as a timeline you
 edit by clicking and dragging. **Morphs** outlines exactly what Reveal will tween
 between neighbouring slides, and links elements with a `data-id`. See
-[`editor/README.md#animation`](../editor/README.md#animation).
+[`editor/README.md#animation`](../editor/README.md#animation). You can also right-click any element in its
+preview to animate, auto-animate, style or edit it in place
+([`#editing-in-the-preview`](../editor/README.md#editing-in-the-preview)).
 
 ---
 
