@@ -68,6 +68,7 @@
 	"scripts": {
 		"dev": "npm run start",
 		"start": "vite",
+		"edit": "vite -c vite.config.editor.js --open /__editor/",
 		"build:deck": "vite build -c vite.config.deck.js",
 		"prepack": "npm run build",
 		"build:core": "tsc && vite build && vite build -c vite.config.styles.ts && node vendor/reveal.js/scripts/add-banner.js dist/reveal.js",
@@ -79,7 +80,9 @@
 		"lint:slides": "node scripts/lint-slide-classes.js",
 		"check:vocab": "node scripts/check-shared-vocabulary.js",
 		"make:slide": "node scripts/make-slide.js",
-		"make:component": "node scripts/make-component.js"
+		"make:component": "node scripts/make-component.js",
+		"test:editor": "node --test editor/tests/",
+		"test:editor:browser": "node editor/tests/browser/smoke.mjs"
 	},
 	"author": "Greg Shallard",
 	"devEngines": {
@@ -107,7 +110,9 @@
 		"jszip": "^3.10.1",
 		"marked": "^17.0.5",
 		"marked-smartypants": "^1.1.11",
+		"monaco-editor": "0.52.2",
 		"node-qunit-puppeteer": "^2.2.1",
+		"playwright-core": "1.56.1",
 		"qunit": "^2.25.0",
 		"sass": "^1.98.0",
 		"typescript": "^6.0.2",

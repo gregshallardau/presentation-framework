@@ -1,0 +1,385 @@
+<!doctype html>
+<!--
+  Deck studio - the GUI editor for this reveal.js framework (`npm run edit`).
+  Shell, styles and interaction model follow md-doc-pipeline's browser editor
+  (md-doc-web-editor/md_doc_web_editor/static/index.html); the preview pane is
+  the real deck in an iframe instead of a PDF viewer.
+-->
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Deck studio</title>
+    <link rel="icon" href="/__editor/mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/__editor/editor.css" />
+  </head>
+  <body>
+    <div class="studio" id="studio">
+      <header class="app-header">
+        <a class="brand" href="/__editor/" aria-label="Deck studio home"
+          ><img src="/__editor/mark.svg" alt="" /><span
+            >deck<span class="brand-sub">studio</span></span
+          ></a
+        ><span class="header-divider"></span>
+        <button class="workspace-button" id="workspace-button" title="Deck folder">
+          <span data-icon="folder"></span><span id="workspace-name">Deck</span
+          ><span class="local-badge"><i></i> Local</span>
+        </button>
+        <button class="quick-search" data-action="quick-open">
+          <span data-icon="search"></span
+          ><span>Find a slide, file or command…</span><kbd>Ctrl P</kbd>
+        </button>
+        <div class="header-actions">
+          <button
+            class="button appearance-button"
+            data-action="appearance"
+            title="Switch between light and dark mode"
+            aria-label="Switch appearance"
+            id="appearance-button"
+          >
+            <span data-icon="moon"></span><span id="appearance-label">Dark mode</span></button
+          ><button
+            class="icon-button"
+            data-action="help"
+            title="Keyboard shortcuts"
+            aria-label="Keyboard shortcuts"
+          >
+            <span data-icon="help"></span></button
+          ><button class="button export-button" data-action="build-menu" id="build-button">
+            <span data-icon="play"></span>Build<span data-icon="chevron-down"></span>
+          </button>
+        </div>
+      </header>
+      <div class="workbench" id="workbench">
+        <nav class="activity-rail" aria-label="Deck tools">
+          <button class="rail-button active" data-nav="slides" title="Slides" aria-label="Slides">
+            <span data-icon="slides"></span></button
+          ><button class="rail-button" data-nav="files" title="Files" aria-label="Files">
+            <span data-icon="files"></span></button
+          ><button class="rail-button" data-nav="search" title="Search deck" aria-label="Search deck">
+            <span data-icon="search"></span></button
+          ><button class="rail-button" data-nav="problems" title="Problems" aria-label="Problems">
+            <span data-icon="alert"></span></button
+          ><button class="rail-button" data-nav="git" title="Source control" aria-label="Source control">
+            <span data-icon="git"></span></button
+          ><span class="rail-space"></span
+          ><button class="rail-button" data-action="focus" title="Focus mode" aria-label="Focus mode">
+            <span data-icon="maximize"></span></button
+          ><button class="rail-button" data-action="settings" title="Settings" aria-label="Settings">
+            <span data-icon="settings"></span>
+          </button>
+        </nav>
+        <aside class="workspace-sidebar" id="sidebar" aria-label="Deck navigation">
+          <div class="pane-heading">
+            <span id="sidebar-title">SLIDES</span>
+            <div class="heading-actions">
+              <button
+                class="icon-button small"
+                data-action="new-slide"
+                title="New slide"
+                aria-label="New slide"
+              >
+                <span data-icon="plus"></span></button
+              ><button
+                class="icon-button small"
+                data-action="new-file"
+                title="New file"
+                aria-label="New file"
+              >
+                <span data-icon="file-plus"></span></button
+              ><button
+                class="icon-button small"
+                data-action="refresh-tree"
+                title="Refresh"
+                aria-label="Refresh"
+              >
+                <span data-icon="refresh"></span>
+              </button>
+            </div>
+          </div>
+          <div class="sidebar-workspace">
+            <span class="deck-count" id="deck-count">0 slides</span>
+            <button
+              class="icon-button small"
+              data-action="deck-actions"
+              title="Deck actions"
+              aria-label="Deck actions"
+            >
+              <span data-icon="more"></span>
+            </button>
+          </div>
+          <div id="workspace-path" class="workspace-path"></div>
+          <input id="file-filter" class="input tree-filter" placeholder="Filter…" aria-label="Filter" />
+          <div class="sidebar-content" id="slides-panel" aria-label="Slides in deck order"></div>
+          <div class="sidebar-content" id="file-tree" hidden></div>
+          <div class="sidebar-content" id="search-panel" hidden>
+            <label class="field-label" for="workspace-query">SEARCH IN FILES</label
+            ><input id="workspace-query" class="input" placeholder="Search text…" />
+            <div id="search-results"></div>
+          </div>
+          <div class="sidebar-content" id="problems-panel" hidden></div>
+          <div class="sidebar-content" id="git-panel" hidden></div>
+          <div class="sidebar-footer">
+            <span data-icon="shield"></span
+            ><span>On your machine.<br /><strong>Your deck stays yours.</strong></span>
+          </div>
+        </aside>
+        <div
+          class="splitter nav-splitter"
+          id="nav-splitter"
+          role="separator"
+          tabindex="0"
+          aria-label="Resize navigation"
+          aria-orientation="vertical"
+          aria-valuemin="180"
+          aria-valuemax="420"
+          aria-valuenow="240"
+        ></div>
+        <main class="editor-pane" id="editor-pane">
+          <div class="document-tabs" id="document-tabs" role="tablist" aria-label="Open files">
+            <span class="tabs-empty">Your slides</span>
+          </div>
+          <div class="editor-toolbar">
+            <div class="breadcrumbs" id="editor-filename">No file selected</div>
+            <button
+              id="preview-toggle"
+              class="button ghost"
+              data-action="toggle-preview"
+              aria-controls="preview-pane"
+              aria-pressed="true"
+              title="Hide preview"
+            >
+              <span data-icon="panel"></span><span id="preview-toggle-label">Hide preview</span>
+            </button>
+            <button id="save-btn" class="button save-button" disabled title="Save (Ctrl S)">
+              <span data-icon="save"></span><span>Save</span>
+            </button>
+          </div>
+          <div class="format-toolbar" id="format-toolbar" aria-label="Slide formatting">
+            <button class="icon-button small" data-insert="heading" title="Heading" aria-label="Insert heading">
+              <span data-icon="heading"></span></button
+            ><button class="icon-button small" data-insert="bold" title="Bold (Ctrl B)" aria-label="Bold">
+              <strong>B</strong></button
+            ><button class="icon-button small" data-insert="italic" title="Italic (Ctrl I)" aria-label="Italic">
+              <em>I</em></button
+            ><button class="icon-button small" data-insert="list" title="Bullet list" aria-label="Insert bullet list">
+              <span data-icon="list"></span></button
+            ><span class="toolbar-divider"></span
+            ><button
+              class="icon-button small"
+              data-insert="fragment"
+              title="Reveal step by step (fragment)"
+              aria-label="Make a fragment"
+            >
+              <span data-icon="steps"></span></button
+            ><button
+              class="icon-button small"
+              data-insert="vertical"
+              title="Vertical sub-slide (--)"
+              aria-label="Insert vertical sub-slide"
+            >
+              <span data-icon="stack"></span></button
+            ><button class="icon-button small" data-insert="notes" title="Speaker notes" aria-label="Insert speaker notes">
+              <span data-icon="notes"></span></button
+            ><button
+              class="icon-button small"
+              data-insert="slide-attrs"
+              title="Slide attributes (transition, background)"
+              aria-label="Insert slide attributes"
+            >
+              <span data-icon="sliders"></span></button
+            ><button
+              class="icon-button small"
+              data-action="insert-menu"
+              aria-haspopup="dialog"
+              title="Insert a component or class"
+              aria-label="Insert a component or class"
+            >
+              <span data-icon="component"></span></button
+            ><label title="Show the slide under the cursor in the preview"
+              ><input id="follow-cursor" type="checkbox" checked /> Follow cursor</label
+            ><span class="toolbar-space"></span
+            ><button
+              class="icon-button small"
+              data-action="editor-find"
+              title="Find in file"
+              aria-label="Find in file"
+            >
+              <span data-icon="search"></span>
+            </button>
+          </div>
+          <div class="editor-surface">
+            <div id="monaco" class="monaco-container"></div>
+            <div class="welcome" id="welcome">
+              <div class="welcome-mark"><img src="/__editor/mark.svg" alt="" /></div>
+              <span class="eyebrow">YOUR DECK</span>
+              <h1>Good talks<br />start here.</h1>
+              <p>Write a slide, watch the real deck<br />update beside it.</p>
+              <button class="button primary" data-action="open-first">
+                <span data-icon="slides"></span>Open the first slide</button
+              ><button class="button ghost" data-action="new-slide">
+                <span data-icon="plus"></span>Add a slide
+              </button>
+              <div class="welcome-shortcuts">
+                <span><kbd>Ctrl P</kbd> Quick open</span><span><kbd>Ctrl K</kbd> Commands</span>
+              </div>
+            </div>
+          </div>
+          <div class="editor-bottom">
+            <span id="editor-position">Ln 1, Col 1</span><span id="editor-slide">—</span
+            ><span id="editor-language">Markdown</span>
+          </div>
+        </main>
+        <div
+          class="splitter preview-splitter"
+          id="preview-splitter"
+          role="separator"
+          tabindex="0"
+          aria-label="Resize preview"
+          aria-orientation="vertical"
+          aria-valuemin="320"
+          aria-valuemax="1600"
+          aria-valuenow="600"
+        ></div>
+        <section class="preview-pane" id="preview-pane" aria-label="Deck preview">
+          <div class="preview-heading">
+            <div>
+              <span class="eyebrow">LIVE PREVIEW</span
+              ><span class="preview-kind">Reveal deck <span class="exact-badge">The real deck</span></span>
+            </div>
+            <div class="preview-layout-actions">
+              <button class="icon-button small" data-action="layout" title="Change layout" aria-label="Change layout">
+                <span data-icon="columns"></span></button
+              ><button
+                class="icon-button small"
+                data-action="inspector"
+                title="Slide, deck and theme inspector"
+                aria-label="Inspector"
+              >
+                <span data-icon="sliders"></span></button
+              ><button class="icon-button small" data-action="present" title="Present in a new window" aria-label="Present">
+                <span data-icon="external"></span></button
+              ><button
+                class="icon-button small"
+                data-action="maximize-preview"
+                title="Maximise preview"
+                aria-label="Maximise preview"
+              >
+                <span data-icon="maximize"></span>
+              </button>
+            </div>
+          </div>
+          <div class="preview-toolbar">
+            <button class="icon-button small" id="deck-prev" title="Previous slide" aria-label="Previous slide">
+              <span data-icon="chevron-left"></span></button
+            ><span class="page-label" id="deck-position" aria-live="polite">—</span
+            ><button class="icon-button small" id="deck-next" title="Next slide" aria-label="Next slide">
+              <span data-icon="chevron-right"></span></button
+            ><span class="toolbar-divider"></span
+            ><button class="icon-button small" data-action="overview" title="Slide overview (Esc)" aria-label="Slide overview">
+              <span data-icon="grid"></span></button
+            ><button class="icon-button small" data-action="speaker" title="Speaker view" aria-label="Speaker view">
+              <span data-icon="notes"></span></button
+            ><select id="preview-theme" aria-label="Preview theme" title="Preview a skin"></select
+            ><span class="toolbar-space"></span
+            ><button class="icon-button small" data-action="print-view" title="Print / PDF view" aria-label="Print view">
+              <span data-icon="printer"></span></button
+            ><button class="icon-button small" data-action="refresh-preview" title="Reload preview" aria-label="Reload preview">
+              <span data-icon="refresh"></span>
+            </button>
+          </div>
+          <div class="preview-document-bar">
+            <span data-icon="slides"></span><span id="preview-document">No slide selected</span
+            ><button id="preview-status" class="render-state" data-action="diagnostics">Ready</button>
+          </div>
+          <div class="preview-body deck-preview-body" id="preview-body">
+            <div class="deck-frame-wrap" id="deck-frame-wrap">
+              <iframe id="deck-frame" title="Deck preview" tabindex="0"></iframe>
+            </div>
+            <div id="preview-loading" class="preview-loading" hidden>
+              <span class="spinner"></span><span>Updating the deck…</span>
+            </div>
+          </div>
+          <div class="preview-footer">
+            <label class="switch-label"
+              ><input id="auto-preview" type="checkbox" checked /><span class="switch-track"></span>Live preview</label
+            ><span id="preview-time">Unsaved edits preview instantly</span>
+          </div>
+        </section>
+        <aside class="inspector" id="inspector" hidden aria-label="Inspector">
+          <div class="pane-heading">
+            <span>INSPECTOR</span
+            ><button class="icon-button small" data-action="inspector" aria-label="Close inspector">
+              <span data-icon="close"></span>
+            </button>
+          </div>
+          <div class="inspector-tabs" role="tablist">
+            <button class="active" data-inspect="slide">Slide</button
+            ><button data-inspect="deck">Deck</button
+            ><button data-inspect="theme">Theme</button
+            ><button data-inspect="components">Components</button>
+          </div>
+          <div id="inspector-content" class="inspector-content"></div>
+        </aside>
+      </div>
+      <section class="diagnostics-panel" id="diagnostics-panel" hidden>
+        <div class="pane-heading">
+          <span>BUILD &amp; DIAGNOSTICS</span
+          ><button class="text-button" data-action="lint">Check deck</button
+          ><button class="icon-button small" data-action="diagnostics" aria-label="Close diagnostics">
+            <span data-icon="close"></span>
+          </button>
+        </div>
+        <div id="diagnostics-content"></div>
+      </section>
+      <footer class="status-bar">
+        <button data-action="nav-toggle" aria-label="Toggle navigation"><span data-icon="panel"></span></button
+        ><span class="connection-dot" id="connection-dot"></span><span id="connection-status">Connecting</span
+        ><button data-nav="git" id="git-branch"><span data-icon="git"></span><span>Git</span></button
+        ><span class="status-divider"></span><span id="save-status">All changes saved</span
+        ><span class="toolbar-space"></span
+        ><button data-nav="problems" id="diagnostic-count"><span data-icon="check"></span>No issues</button
+        ><span class="status-divider"></span><span>UTF-8</span
+        ><span class="status-divider"></span><span>Local deck</span>
+      </footer>
+    </div>
+    <dialog class="command-dialog" id="command-dialog">
+      <div class="command-input-wrap">
+        <span data-icon="search"></span
+        ><input
+          id="command-query"
+          placeholder="Search slides and files, or type &gt; for commands…"
+          aria-label="Search slides, files and commands"
+          role="combobox"
+          aria-controls="command-results"
+          aria-expanded="true"
+          aria-autocomplete="list"
+          autocomplete="off"
+        /><kbd>Esc</kbd>
+      </div>
+      <div id="command-results" role="listbox" aria-label="Results"></div>
+      <div class="command-footer">
+        <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span><span><kbd>↵</kbd> Open</span
+        ><span id="command-hint">Slides &amp; files · type &gt; for commands</span>
+      </div>
+    </dialog>
+    <dialog class="form-dialog" id="form-dialog">
+      <form id="dialog-form">
+        <div class="dialog-header">
+          <h2 id="dialog-title"></h2>
+          <button type="button" class="icon-button" id="dialog-close" aria-label="Close dialog">
+            <span data-icon="close"></span>
+          </button>
+        </div>
+        <div id="dialog-body"></div>
+        <div class="dialog-actions" id="dialog-actions"></div>
+      </form>
+    </dialog>
+    <div class="toast-stack" id="toast-stack" role="status" aria-live="polite"></div>
+    <div id="resize-shield" hidden></div>
+    <script src="/__editor/vendor/monaco/vs/loader.js"></script>
+    <script src="/__editor/tokenizers.js"></script>
+    <script src="/__editor/editor.js" defer></script>
+  </body>
+</html>

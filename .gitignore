@@ -18,3 +18,6 @@ dev.html
 deck-dist/
 .vite/
 *.log
+# deck studio (npm run edit) recovery copies and trash
+.editor-history/
+.editor-trash/
