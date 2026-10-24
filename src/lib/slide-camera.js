@@ -33,11 +33,16 @@ const MAX_ZOOM = 4; // element fits never push in past this; an explicit `Nx` ca
 const PAD = 60; // slide px of air around a fitted element
 const MIN_MS = 900; // camera moves read better a touch slower than a UI transition
 
+/**
+ * @returns the camera's inspection handle (deck studio's camera overlay uses
+ * it; main.js exposes it as `window.slideCamera`), or null when printing.
+ */
 export function initSlideCamera(Reveal) {
-	if (Reveal.isPrintingPDF?.()) return;
+	if (Reveal.isPrintingPDF?.()) return null;
 
 	const rigs = new Map();
-	for (const section of document.querySelectorAll(SELECTOR)) rigs.set(section, createRig(section, Reveal));
+	const state = { directing: false };
+	for (const section of document.querySelectorAll(SELECTOR)) rigs.set(section, createRig(section, Reveal, state));
 
 	const rigOf = (el) => rigs.get(el?.closest?.(SELECTOR));
 	const currentSlide = () => Reveal.getCurrentSlide?.();
@@ -61,9 +66,30 @@ export function initSlideCamera(Reveal) {
 	// images and fonts move layout after first paint: re-aim once they settle
 	window.addEventListener('load', all);
 	all();
+
+	const rigAt = (section) => rigs.get(section);
+	return {
+		/** Director mode: every camera parks at home and ignores cues, so a tool can draw the frames over the whole slide. */
+		director(on) {
+			state.directing = !!on;
+			all();
+		},
+		isDirector: () => state.directing,
+		/** The slide frame in slide px. */
+		size: (section) => ({ width: section.clientWidth, height: section.clientHeight }),
+		/** The cue deciding the step on screen: { cue: element | null, spec: its target (or the starting view) }. */
+		current(section) {
+			const cue = pickCue(cues(section));
+			return { cue, spec: cue ? cue.dataset.camera : section.getAttribute('data-camera') || '' };
+		},
+		/** `[cx, cy, w]` the camera would show for a target string, or null if it can't resolve. */
+		view: (section, spec) => rigAt(section)?.viewFor(spec) ?? null,
+		/** The same for a given element (zoom = the optional extra push-in). */
+		viewOfElement: (section, el, zoom = 1) => rigAt(section)?.viewOfElement(el, zoom) ?? null,
+	};
 }
 
-function createRig(section, Reveal) {
+function createRig(section, Reveal, state) {
 	const { world } = mount(section, Reveal);
 	const size = () => ({ width: section.clientWidth, height: section.clientHeight });
 	const camera = makeCamera(({ k, tx, ty }) => {
@@ -73,15 +99,33 @@ function createRig(section, Reveal) {
 	}, size);
 	let aimed = null; // the view last asked for, so unrelated fragments don't restart a move
 
+	/** A target's view as the camera would frame it (clamped unless data-camera-free). */
+	function viewFor(spec) {
+		const { width, height } = size();
+		if (!width) return null;
+		const view = resolve(parseTarget(spec), section, world, width, height);
+		return view && clamp(view, width, height);
+	}
+	function viewOfElement(el, zoom) {
+		const { width, height } = size();
+		const view = width && fitElement(el, zoom, section, world, width, height);
+		return view ? clamp(view, width, height) : null;
+	}
+	const clamp = (view, width, height) =>
+		section.hasAttribute('data-camera-free') ? view : clampView(view, width, height);
+
 	function update({ animate }) {
 		const { width, height } = size();
 		if (!width) return; // display:none (a far-off slide): it re-aims when it becomes current
 
+		if (state.directing) {
+			aimed = null;
+			camera.zoomTo(homeView(width, height));
+			return;
+		}
 		const cue = pickCue(cues(section));
-		const target = parseTarget(cue ? cue.dataset.camera : section.getAttribute('data-camera'));
-		let view = resolve(target, section, world, width, height);
+		const view = viewFor(cue ? cue.dataset.camera : section.getAttribute('data-camera'));
 		if (!view) return;
-		if (!section.hasAttribute('data-camera-free')) view = clampView(view, width, height);
 		if (sameView(view, aimed)) return;
 
 		const first = aimed === null;
@@ -91,7 +135,7 @@ function createRig(section, Reveal) {
 		else camera.zoomTo(view);
 	}
 
-	return { section, update };
+	return { section, update, viewFor, viewOfElement };
 }
 
 /** Wrap the slide's content in a world the camera can move. Idempotent. */
@@ -151,6 +195,11 @@ function resolve(target, section, world, width, height) {
 		console.warn(`[slide-camera] no element matches "${target.selector}" on #${section.id || 'slide'}`);
 		return null;
 	}
+	return fitElement(el, target.zoom, section, world, width, height);
+}
+
+/** The view that frames an element, then pushes in a further `zoom`. */
+function fitElement(el, zoom, section, world, width, height) {
 	const rect = rectOf(world, el);
 	if (!rect) return null;
 	const pad = Number(section.dataset.cameraPad);
@@ -159,7 +208,7 @@ function resolve(target, section, world, width, height) {
 		aspect: width / height,
 		minW: width / MAX_ZOOM,
 	});
-	return magnify(fit, target.zoom);
+	return magnify(fit, zoom);
 }
 
 /**

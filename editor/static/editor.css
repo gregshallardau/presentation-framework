@@ -2426,3 +2426,63 @@ kbd {
 	font-size: 10px;
 	color: var(--muted);
 }
+
+/* ── Camera row (timeline) ───────────────────────────────────────────── */
+.tl-seg {
+	display: inline-flex;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	overflow: hidden;
+}
+.tl-seg-button {
+	padding: 3px 10px;
+	border: 0;
+	background: var(--surface);
+	color: inherit;
+	font-size: 11px;
+	cursor: pointer;
+}
+.tl-seg-button + .tl-seg-button {
+	border-left: 1px solid var(--border);
+}
+.tl-seg-button.active {
+	background: #e11d48;
+	color: #fff;
+}
+.tl-cam-chips {
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+.tl-cam-chip {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 5px;
+	max-width: 190px;
+	padding: 3px 8px;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	background: var(--surface);
+	color: inherit;
+	font-size: 11px;
+	cursor: pointer;
+}
+.tl-cam-chip b {
+	font-weight: 600;
+}
+.tl-cam-chip span {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--muted, #6b7280);
+}
+.tl-cam-chip.has-cue span {
+	color: #d97706;
+}
+.tl-cam-chip.active {
+	border-color: #e11d48;
+	box-shadow: inset 0 0 0 1px #e11d48;
+}
+.tl-cam-target {
+	width: 190px;
+}

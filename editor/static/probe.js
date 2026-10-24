@@ -58,6 +58,56 @@ export function createProbe(win) {
 	}
 	const clear = (key) => draw([], key);
 
+	/**
+	 * Draws frames from rectangles in the preview's viewport px (not elements):
+	 * [{ rect: { left, top, width, height }, color, label, dashed, mask }].
+	 * `mask` dims everything outside the frame - "what the camera sees".
+	 */
+	function drawFrames(items, key = 'frames') {
+		const root = layer();
+		root.querySelectorAll(`[data-layer="${key}"]`).forEach((n) => n.remove());
+		for (const item of items) {
+			const r = item.rect;
+			const box = doc.createElement('div');
+			box.dataset.layer = key;
+			box.style.cssText =
+				`position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;` +
+				`border:${item.mask ? 3 : 2}px ${item.dashed ? 'dashed' : 'solid'} ${item.color};box-sizing:border-box;` +
+				(item.mask ? 'box-shadow:0 0 0 9999px rgba(15,23,42,.5);' : '');
+			if (item.label) {
+				const tag = doc.createElement('span');
+				tag.textContent = item.label;
+				tag.style.cssText = `position:absolute;left:-2px;top:-22px;padding:2px 7px;border-radius:4px;background:${item.color};color:#fff;white-space:nowrap;max-width:360px;overflow:hidden;text-overflow:ellipsis`;
+				// a frame at the top edge would push its label off screen: tuck it inside
+				if (r.top < 26) tag.style.top = '4px';
+				box.append(tag);
+			}
+			root.append(box);
+		}
+	}
+
+	/**
+	 * Slide px <-> preview viewport px for a slide section, through Reveal's
+	 * scale. Measured live, so it is right at any window size.
+	 */
+	function slideSpace(section) {
+		const box = section.getBoundingClientRect();
+		const scale = box.width / section.clientWidth || 1;
+		return {
+			scale,
+			toScreen: ({ x, y, w, h }) => ({
+				left: box.left + x * scale,
+				top: box.top + y * scale,
+				width: w * scale,
+				height: h * scale,
+			}),
+			toSlide: (clientX, clientY) => ({
+				x: (clientX - box.left) / scale,
+				y: (clientY - box.top) / scale,
+			}),
+		};
+	}
+
 	const current = () => deck.getCurrentSlide();
 
 	function describe(el) {
@@ -366,6 +416,8 @@ export function createProbe(win) {
 		previewClass,
 		stopPicking,
 		draw,
+		drawFrames,
+		slideSpace,
 		clear,
 		describe,
 		selectable,

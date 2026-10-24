@@ -36,7 +36,9 @@ deck.initialize().then(() => {
 	initAlpine();
 	// Slide camera (data-camera): loaded only for decks that use it, since it pulls in d3.
 	if (document.querySelector('section[data-camera]')) {
-		import('@/lib/slide-camera.js').then((m) => m.initSlideCamera(deck));
+		import('@/lib/slide-camera.js').then((m) => {
+			window.slideCamera = m.initSlideCamera(deck); // deck studio's camera overlay reads this
+		});
 	}
 });
 

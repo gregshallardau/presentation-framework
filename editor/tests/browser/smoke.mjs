@@ -23,8 +23,13 @@ fx.write(
 	'slides/040.2-growth-2.html',
 	'<section id="growth-2" data-slug="growth-2" data-auto-animate>\n\t<h2>Growth</h2>\n\t<div class="box" data-id="card">Q1 → Q2</div>\n\t<p>This quarter</p>\n\t<ul>\n\t\t<li class="fragment">First point</li>\n\t\t<li>Second point</li>\n\t</ul>\n</section>\n'
 );
+// A camera slide for the camera overlay steps.
+fx.write(
+	'slides/090-camera.html',
+	'<section id="camera" data-slug="camera" data-camera>\n\t<h2>Camera</h2>\n\t<div class="flex-cols">\n\t\t<div id="left" class="box primary">Left box</div>\n\t\t<div class="box success">Right box</div>\n\t</div>\n\t<p class="fragment">First step</p>\n</section>\n'
+);
 fx.git('add', '-A');
-fx.git('commit', '-qm', 'auto-animate fixture');
+fx.git('commit', '-qm', 'auto-animate + camera fixtures');
 const ed = await startEditor(fx.root, { live: true });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 const page = await browser.newPage({ viewport: { width: 1600, height: 950 } });
@@ -491,6 +496,98 @@ try {
 			samples.raw,
 			0,
 			`${samples.raw} of ${samples.total} samples showed an unready page`
+		);
+	});
+
+	await step('camera overlay: click an element, drag a region, add and clear a step', async () => {
+		const frameEval = (expr) =>
+			page.evaluate((e) => {
+				const w = document.getElementById('deck-frame').contentWindow;
+				return new Function('w', `return (${e})`)(w);
+			}, expr);
+		const model = () =>
+			page.evaluate(
+				() =>
+					monaco.editor.getModels().find((m) => m.uri.path.endsWith('090-camera.html'))?.getValue() ||
+					''
+			);
+		const inFrame = (selector, ax, ay) =>
+			page.evaluate(
+				([sel, fx, fy]) => {
+					const f = document.getElementById('deck-frame');
+					const r = f.getBoundingClientRect();
+					const e = f.contentDocument.querySelector(sel).getBoundingClientRect();
+					return { x: r.left + e.left + e.width * fx, y: r.top + e.top + e.height * fy };
+				},
+				[selector, ax, ay]
+			);
+
+		// each edit reloads the preview; it is ready to aim once the camera tools re-attach
+		const aimable = () =>
+			until(
+				() => frameEval(`w.document.documentElement.dataset.cameraAiming === 'true'`),
+				'the camera tools on the reloaded preview'
+			);
+		await page.click('.slide-item[data-file="090-camera.html"]');
+		await until(() => frameEval(`w.Reveal?.getCurrentSlide()?.id === 'camera'`), 'camera slide');
+		await until(() => frameEval(`!!w.slideCamera`), 'the preview camera');
+		await page.click('#cam-toggle');
+		await until(() => frameEval(`w.slideCamera.isDirector()`), 'director view');
+		await until(
+			() => frameEval(`!!w.document.querySelector('#__studio-overlay [data-layer="cam"]')`),
+			'the frame overlay'
+		);
+		assert.equal(
+			await frameEval(`w.document.querySelector('#camera > .camera-world').style.transform`),
+			'',
+			'director view shows the whole slide'
+		);
+
+		// click: the start view targets that element
+		const box = await inFrame('#left', 0.5, 0.5);
+		await page.mouse.click(box.x, box.y);
+		await until(async () => /data-camera="#left"/.test(await model()), 'start cue written');
+		await until(
+			() => frameEval(`w.Reveal.getCurrentSlide().getAttribute('data-camera') === '#left'`),
+			'the preview to show it'
+		);
+		await aimable();
+
+		// drag on step 1: a position cue lands on that step's fragment
+		await page.click('.tl-cam-chip:has-text("Step 1")');
+		await until(() => frameEval(`w.Reveal.getIndices().f === 0`), 'step 1');
+		const a = await inFrame('#camera .flex-cols', 0.05, 0.1);
+		const b = await inFrame('#camera .flex-cols', 0.45, 0.9);
+		await page.mouse.move(a.x, a.y);
+		await page.mouse.down();
+		await page.mouse.move(b.x, b.y, { steps: 6 });
+		await page.mouse.up();
+		await until(
+			async () => /class="fragment" data-camera="[\d.]+% [\d.]+% [\d.]+x"/.test(await model()),
+			'position cue written'
+		);
+		await aimable();
+		await until(() => frameEval(`w.Reveal.getIndices().f === 0`), 'still on step 1');
+
+		// a camera-only step, then clear removes it again
+		await page.click('.tl-camera >> text=Camera step');
+		// the new step starts from the framing on screen, to be tweaked
+		await until(
+			async () => /<span class="fragment" data-camera="[\d.]+% [\d.]+% [\d.]+x"><\/span>/.test(await model()),
+			'cue step'
+		);
+		await until(() => frameEval(`w.Reveal.getIndices().f === 1`), 'on the new step');
+		await aimable();
+		await page.click('.tl-camera >> text=Clear');
+		await until(async () => !/<span class="fragment"/.test(await model()), 'cue step removed');
+
+		// camera view: the real camera takes over and moves at step 1
+		await aimable();
+		await page.click('.tl-seg-button:has-text("Camera view")');
+		await page.click('.tl-cam-chip:has-text("Step 1")');
+		await until(
+			() => frameEval(`w.document.querySelector('#camera > .camera-world').style.transform !== ''`),
+			'the camera moved'
 		);
 	});
 

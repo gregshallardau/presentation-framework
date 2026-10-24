@@ -21,6 +21,7 @@
 		slides: 'M3 5h18v12H3Z M8 21h8 M12 17v4',
 		timeline: 'M3 6h8 M3 12h13 M3 18h5 M14 4v4 M19 10v4 M11 16v4',
 		morph: 'M4 7h6v6H4Z M14 11h6v6h-6Z M10 10l4 4',
+		camera: 'M3 7h11v10H3Z M14 11l6-3v8l-6-3',
 		stack: 'M4 4h16v6H4Z M4 14h16v6H4Z',
 		steps: 'M4 18h4v-4h4v-4h4V6h4',
 		notes: 'M5 3h14v18H5Z M9 8h6 M9 12h6 M9 16h3',
@@ -2918,6 +2919,7 @@
 		'insert-menu': insertMenu,
 		timeline: () => withAnimator((animator) => animator.toggle()),
 		'aa-highlight': () => withAnimator((animator) => animator.setHighlight(!animator.highlight())),
+		camera: () => withAnimator((animator) => animator.cameraToggle()),
 		'editor-find': () => state.editor?.getAction('actions.find')?.run(),
 	};
 	// Read-only hooks for the browser smoke test (editor/tests/browser/smoke.mjs).

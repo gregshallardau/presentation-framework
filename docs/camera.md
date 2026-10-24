@@ -78,6 +78,12 @@ frame stays on the slide.
 - For a camera over **number stories** (seesaw, bars) use `<deck-zoom-story>`, which has its
   own world and beats. This is the general version for ordinary slide content.
 
+## In deck studio
+
+`npm run edit` can aim the camera for you: the **Camera** button shows the camera's
+frame on the whole slide, and clicking an element or dragging a region writes the cue.
+See [`editor/README.md#camera`](../editor/README.md#camera).
+
 ## Code
 
 | File | |
@@ -86,5 +92,6 @@ frame stays on the slide.
 | `src/lib/slide-camera.js` | mounting, the fragment listener, measuring elements |
 | `src/lib/camera.js` | the shared camera (`interpolateZoom` flight), also used by `<deck-zoom-story>` |
 | `src/styles/theme/camera.css` | structural CSS (`@layer theme`) |
+| `window.slideCamera` | inspection handle for deck studio: `director(on)` parks every camera at home, `view(section, target)` resolves a target to a frame |
 
 `main.js` loads `slide-camera.js` lazily, only when the deck has a `[data-camera]` slide.

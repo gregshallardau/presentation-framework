@@ -159,6 +159,36 @@ it straight away, and nothing reaches disk until you save. Use
 - **Edit one element:** pick it (a chip, or **Pick in the preview**). The
   panel on the right sets its effect and step, or stops animating it.
 
+### Camera
+
+The **Camera** button above the preview (or the *Camera* row of the timeline) is for
+decks that use the slide camera ([`docs/camera.md`](../docs/camera.md)). Turn the
+camera on for a slide with the row's *Camera* switch, which writes `data-camera` on
+the section. Then aim it by clicking:
+
+- **Director view** parks the real camera at home, so the preview shows the whole
+  slide, and draws what the camera sees on top. A **solid red** frame, with
+  everything outside it dimmed, is the framing at the step on screen. **Dashed
+  amber** frames, numbered, are the other steps, so you see the camera's path.
+- **Hover** an element: a dashed blue frame shows how a click would frame it.
+- **Click an element** to frame it. **Drag a region** to frame that area; the red
+  frame follows the drag and labels the target it will write (`28% 46.5% 2.84x`).
+  Either writes a `data-camera` cue on the step on screen: on a fragment of that
+  step, or, on *Start*, on the section (the starting view).
+- **Camera view** turns the overlay off and the real camera back on, to see the move
+  as the audience will. *Play steps* then runs the whole thing.
+- The row lists *Start* and every step with its target (or *holds*, when the camera
+  keeps the previous framing). Click one to show the slide at that step. The field
+  edits the target as text (`#id`, `25% 30% 2x`, `home`); **Home** frames the whole
+  slide; **Clear** removes the step's move; **+ Camera step** adds a step that only
+  moves the camera, starting from the framing on screen.
+
+What gets written is ordinary markup: `data-camera` on a fragment, an
+`<span class="fragment" data-camera="…"></span>` for a step with nothing to show,
+and an `id` on a clicked element that had none (an `.element` comment in Markdown),
+because an element target is a selector. Each action is one undoable change in the
+open file, previewed before you save.
+
 ### Auto-animate
 
 **Morphs** in the preview toolbar (or *Show morphs* in the timeline) outlines
@@ -299,8 +329,10 @@ editor/server/            the API (Node, no extra dependencies)
   files.js deck.js slide-actions.js overlay.js annotate.js config.js catalog.js lint.js git.js jobs.js
 editor/static/            the app: index.html, editor.js, tokenizers.js, editor.css
   animate.js              animation timeline, auto-animate tools, right-click menus
+  camera.js               camera overlay (director view), aiming by click / drag, the timeline's Camera row
+  camera-edit.js          the pure text edits behind it: cue fragments, ids, frame -> target (no DOM)
   context-menu.js         the menu component (submenus, filter, keyboard)
-  probe.js                inside the preview: picking, outlines, steps, Reveal's auto-animate pairs
+  probe.js                inside the preview: picking, outlines, frames, steps, Reveal's auto-animate pairs
   source-edit.js          reads/writes Reveal attributes and inline text in HTML tags and Markdown lines
 editor/tests/             node:test suites + browser/smoke.mjs
 ```

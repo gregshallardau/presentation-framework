@@ -14,6 +14,7 @@
  * and UI helpers.
  */
 import { createProbe } from './probe.js';
+import { createCameraTools } from './camera.js';
 import { closeMenu, openMenu } from './context-menu.js';
 import {
 	EASINGS,
@@ -57,6 +58,7 @@ export function createAnimator(host) {
 	let showAllSteps = false;
 	function onFrameReady(win) {
 		probe = createProbe(win);
+		camera.onFrameReady(win);
 		frameChanged();
 		const deck = win.Reveal;
 		const refresh = () => {
@@ -250,8 +252,12 @@ export function createAnimator(host) {
 		if (!host.frameCurrent()) throw stale();
 	}
 
-	/** Applies [{ path, target, change }] grouped per file, in one undo step per file. */
-	async function commit(edits, message) {
+	/**
+	 * Applies [{ path, target, change }] grouped per file, in one undo step per file.
+	 * The reloaded preview shows every step, unless `keepStep` (the camera tools
+	 * edit the step you are looking at, so it stays on it).
+	 */
+	async function commit(edits, message, { keepStep = false } = {}) {
 		const byPath = new Map();
 		for (const edit of edits) {
 			if (!byPath.has(edit.path)) byPath.set(edit.path, []);
@@ -262,7 +268,12 @@ export function createAnimator(host) {
 			await host.setContent(path, applyEdits(buffer.content, list));
 		}
 		if (message) toast(message);
-		showAllSteps = true;
+		refresh({ keepStep });
+	}
+
+	/** Reloads the preview after an edit made outside commit(). */
+	function refresh({ keepStep = false } = {}) {
+		showAllSteps = !keepStep;
 		host.refreshPreview();
 	}
 
@@ -917,6 +928,7 @@ export function createAnimator(host) {
 		controls.append(replayButton, rung);
 		arrive.append(controls);
 		rows.append(arrive);
+		rows.append(camera.renderRow(attrs));
 
 		// Morphs from the previous slide (with per-element timing bars)
 		if (state?.incoming || state?.outgoing) {
@@ -1004,6 +1016,7 @@ export function createAnimator(host) {
 
 		renderInspector(inspector, state);
 		body.replaceChildren(rows, inspector);
+		camera.syncChrome();
 		markStep();
 	}
 
@@ -1179,6 +1192,12 @@ export function createAnimator(host) {
 		container.append(auto);
 	}
 
+	/** The toolbar's Camera button: open the timeline and show / hide the director overlay. */
+	function cameraToggle() {
+		if (!isOpen()) toggle(true);
+		return camera.setDirector(!camera.directing());
+	}
+
 	function toggle(force) {
 		const node = panel();
 		node.hidden = force === undefined ? !node.hidden : !force;
@@ -1202,7 +1221,28 @@ export function createAnimator(host) {
 	}
 	wire();
 
+	const camera = createCameraTools({
+		host,
+		el,
+		icon,
+		toast,
+		api: {
+			probe: () => probe,
+			slideSource,
+			elementSource,
+			commit,
+			refresh,
+			attempt,
+			settle,
+			live,
+			scrub,
+			setSlideAttrs,
+		},
+	});
+
 	return {
+		cameraToggle,
+		cameraActive: () => camera.directing(),
 		onFrameReady,
 		beforeShow,
 		toggle,
