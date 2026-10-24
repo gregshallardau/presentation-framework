@@ -218,6 +218,14 @@ export default function deckEditor({ overlay, allowedHosts = [] } = {}) {
 				cache: true,
 			});
 		}
+		if (sub.startsWith('/vendor/vega/')) {
+			// The chart wizard's live preview: the same Vega packages the deck's <deck-chart-vega> uses.
+			const file = decodeURIComponent(sub.slice('/vendor/vega/'.length));
+			const packages = { 'vega.min.js': 'vega', 'vega-lite.min.js': 'vega-lite', 'vega-embed.min.js': 'vega-embed' };
+			if (!packages[file]) throw new HttpError(404, `No vendor file ${file}`);
+			const build = path.join(root, 'node_modules', packages[file], 'build') + path.sep;
+			return serveStatic(res, build, file, { cache: true });
+		}
 		return serveStatic(res, STATIC_DIR, decodeURIComponent(sub.slice(1)));
 	}
 

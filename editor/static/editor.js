@@ -2080,6 +2080,7 @@
 				)
 			);
 		body.append(
+			option('Chart…', 'A step-by-step Vega-Lite chart builder (bar, line, pie, scatter, heatmap…)', 'component', () => chartWizard()),
 			option('Jump link to a slide', 'Links to #/<slug>', 'link', () => linkMenu()),
 			option('Background colour', 'data-background-color on this slide', 'palette', () =>
 				insertText(
@@ -2090,6 +2091,22 @@
 			)
 		);
 		dialog('Insert', body, [], true);
+	}
+	function chartWizard() {
+		if (!current()) return toast('Open a slide first.', true);
+		const markdown = /\.md$/i.test(state.active || '');
+		const dlg = $('form-dialog');
+		if (dlg.open) dlg.close();
+		window.ChartWizard.open({
+			// .md slides take a ```chart block (the same one md-doc documents use); .html slides a <deck-chart-vega>
+			format: markdown ? 'yaml-fence' : 'deck-element',
+			vendorBase: '/__editor/vendor/vega',
+			getConfig: async () => {
+				const mod = await import('/src/lib/vega.js');
+				return mod.vegaConfig({ dark: false, scale: 1, font: 'Inter, Helvetica, Arial, sans-serif', ink: '#0b0c0e', ink2: '#5b616e', line: '#9aa0ac', grid: '#cdd0d6', primary: '#2563eb', secondary: '#3a3f4a' });
+			},
+			onInsert: (code) => insertText('\n' + code),
+		});
 	}
 	function linkMenu() {
 		const body = el('div');

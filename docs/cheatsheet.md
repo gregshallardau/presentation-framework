@@ -404,8 +404,13 @@ between a document and a slide draws the same thing. Both are themed from the de
 custom properties (`--primary`, `--secondary`, `--fg`, `--muted`, `--line`, `--bg`,
 `--font-body`) and follow `[data-theme]`.
 
-- **Data chart (Vega-Lite or Vega)** - `<deck-chart-vega>` takes the spec as JSON, inline or in
-  `spec='...'`. It is interactive (tooltips, selections, bound controls); `ratio="16 / 9"` sets the
+- **Don't hand-write a chart: use the wizard.** In deck studio, **Insert → Chart…** is a step-by-step
+  builder (type → data → customize, with a live preview) that inserts the right block for the file you
+  are in: a ```` ```chart ```` block in a `.md` slide, a `<deck-chart-vega>` in an `.html` slide.
+- **Data chart (Vega-Lite or Vega)** - in a `.md` slide, a fenced ```` ```chart ```` block holding the
+  spec as YAML or JSON (the same block md-doc-pipeline documents use; `vega-lite` / `vega` fences work too,
+  options after the language become attributes: ```` ```chart ratio="16 / 9" ````). In an `.html` slide,
+  `<deck-chart-vega>` takes the spec as JSON, inline or in `spec='...'`. It is interactive (tooltips, selections, bound controls); `ratio="16 / 9"` sets the
   box (default `2 / 1`; do not use `.r-stretch`). `el.view` is the live Vega view.
   ```html
   <deck-chart-vega label="Revenue">

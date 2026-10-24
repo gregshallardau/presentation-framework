@@ -356,3 +356,16 @@ npm run test:editor:browser   # drives the editor in Chromium (playwright-core)
 The browser test needs a Chromium for `playwright-core`. Set `CHROMIUM_PATH`
 to its executable, or run `npx playwright-core install chromium` once. It
 prints a folder of step-by-step screenshots.
+
+## Chart wizard
+
+**Insert → Chart…** opens a four-step builder (type, data, customize, insert) for
+Vega-Lite charts, with a live preview. Paste a table or edit the sample; pick columns
+and options; it inserts a ```` ```chart ```` block in a `.md` slide or a
+`<deck-chart-vega>` in an `.html` slide, at the cursor. The preview uses the Vega
+packages from `node_modules`, served at `/__editor/vendor/vega/`.
+
+`static/chart-wizard.js` is the canonical copy of a file shared with
+md-doc-pipeline's studio, which carries a byte-identical copy. A test compares its
+SHA-256 with `tests/chart-wizard.sha256`; when you change it, copy it over and update
+that hash file in both repos.
