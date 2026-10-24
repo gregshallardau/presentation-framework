@@ -1,11 +1,15 @@
-## Diagrams from md-doc
+## Diagrams in Markdown
 
-```mermaid
+```mermaid steps label="Review flow"
 flowchart LR
-    A["Draft in Markdown"] --> B{"Reviewed?"}
-    B -- "yes" --> C["Build deck"]
-    B -- "no" --> D["Edit"]
+    S(["Start"]) --> A["Draft in Markdown"]
+    A --> B{"Reviewed?"}
+    B -- yes --> C["Build deck"]
+    B -- no --> D["Edit"]
     D --> B
+    subgraph out["Publish"]
+      C --> E(["Done"])
+    end
 ```
 
-Note: Drawn by md-doc's own renderer, so it matches the same block in a document.
+Note: Press the arrow key to step through. Same block works in an md-doc document.

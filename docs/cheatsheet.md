@@ -413,11 +413,13 @@ custom properties (`--primary`, `--secondary`, `--fg`, `--muted`, `--line`, `--b
   </deck-chart-vega>
   ```
 - **Diagram (Mermaid)** - in a `.md` slide, a fenced ```` ```mermaid ```` block; in an `.html` slide,
-  `<deck-mermaid><script type="text/mermaid">…</script></deck-mermaid>`. Drawn by md-doc's own
-  renderer (every diagram type it supports), once per theme, when slides are assembled - so
-  **md-doc must be runnable** at dev and build time: set `MD_DOC_CMD` to its command (for example
-  `uv run --project ../md-doc-pipeline md-doc`), or have `md-doc` on `PATH`. If it is not found the
-  slide shows the source with a note and the build warns.
+  `<deck-mermaid><script type="text/mermaid">…</script></deck-mermaid>`. Add `steps` (` ```mermaid steps `
+  or `<deck-mermaid steps>`) to reveal nodes one at a time in source order, each with the edges leading
+  into it (they are Reveal fragments, so overview and PDF export work). `label="…"` sets the accessible
+  name. Drawn in the browser by the real Mermaid library, styled to match md-doc-pipeline's diagrams
+  (same colour recipe, rounded boxes, orthogonal ELK edge routing) and re-themed with `[data-theme]`.
+  Styling is tuned for **flowcharts**; other diagram types (sequence, state, …) get the deck colours but
+  Mermaid's own sizing. Do not use Mermaid for data charts - use `<deck-chart-vega>`.
 
 ---
 
