@@ -1,0 +1,29 @@
+<section id="vega-interactive" data-slug="vega-interactive">
+	<h2>Interactive chart</h2>
+	<deck-chart-vega label="Revenue by region and month">
+		<script type="application/json">
+		{
+			"data": { "values": [
+				{ "month": "Jan", "revenue": 12, "region": "North" },
+				{ "month": "Feb", "revenue": 19, "region": "North" },
+				{ "month": "Mar", "revenue": 14, "region": "North" },
+				{ "month": "Apr", "revenue": 23, "region": "North" },
+				{ "month": "Jan", "revenue": 8, "region": "South" },
+				{ "month": "Feb", "revenue": 15, "region": "South" },
+				{ "month": "Mar", "revenue": 21, "region": "South" },
+				{ "month": "Apr", "revenue": 18, "region": "South" }
+			] },
+			"params": [{ "name": "pick", "select": { "type": "point", "fields": ["region"] }, "bind": "legend" }],
+			"mark": { "type": "line", "point": true, "strokeWidth": 3 },
+			"encoding": {
+				"x": { "field": "month", "type": "ordinal", "sort": ["Jan", "Feb", "Mar", "Apr"] },
+				"y": { "field": "revenue", "type": "quantitative" },
+				"color": { "field": "region", "type": "nominal" },
+				"opacity": { "condition": { "param": "pick", "value": 1 }, "value": 0.2 },
+				"tooltip": [{ "field": "region" }, { "field": "month" }, { "field": "revenue" }]
+			}
+		}
+		</script>
+	</deck-chart-vega>
+	<aside class="notes">Hover a point for the tooltip; click a legend entry to isolate a region. Same spec renders in an md-doc document as a ```chart block.</aside>
+</section>
