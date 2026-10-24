@@ -379,7 +379,7 @@ fill, YAML and JSON output), `chart-templates.js` (the upstream Vega / Vega-Lite
 **generated** by `node scripts/chart-upstream.mjs` from the lists at the top of that script; `--check` verifies
 it still matches upstream), `chart-types-upstream.js` (the chart types backed by those examples),
 `chart-types-custom.js` (types with no upstream example, written from the nearest example's own marks and
-transforms), `chart-types-flow.js`, `chart-geo-data.js` (country and state lookup tables) and
+transforms), `chart-geo-data.js` (country and state lookup tables and name matching) and
 `chart-wizard.js` (the dialog). They are **canonical here**; md-doc-pipeline's studio carries byte-identical
 copies. After editing any of them:
 
