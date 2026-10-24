@@ -476,7 +476,7 @@
 				return;
 			}
 			note.className = 'cw-note';
-			note.textContent = 'Preview uses the default theme; your document or deck theme is applied when it is built.';
+			note.textContent = 'Close to the final look; the built chart uses your theme\u2019s colours and fonts.';
 			try {
 				const embed = await loadVega(host.vendorBase);
 				if (state.config === null) state.config = host.getConfig ? (await host.getConfig()) || {} : {};
@@ -602,7 +602,7 @@
 			const note = h('p', { class: 'cw-note', 'aria-live': 'polite' });
 			const refresh = (quiet) => { clearTimeout(timer); timer = setTimeout(() => preview(box, note), quiet ? 250 : 80); };
 			const content = [typeStep, dataStep, designStep, insertStep][state.step](refresh);
-			main.append(...content);
+			main.append(...content.filter(Boolean));
 			const showPreview = state.step > 0;
 			const body = h('div', { class: 'cw-body' }, main, showPreview ? h('aside', { class: 'cw-preview', 'aria-label': 'Preview' }, box, note) : null);
 			const steps = h('ol', { class: 'cw-steps' }, STEPS.map((s, i) => h('li', { class: i < state.step ? 'done' : '', 'aria-current': i === state.step ? 'step' : null }, `${i + 1}. ${s}`)));
