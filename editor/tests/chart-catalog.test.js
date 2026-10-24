@@ -53,6 +53,7 @@ test('every chart type renders from its sample, identically on a second run', as
 		assert.ok((a.match(/<(path|rect|circle|text|line)\b/g) || []).length >= 3, `${t.id} drew almost nothing`);
 		// Vega numbers clip paths and gradients from a global counter, so ignore those ids.
 		const same = (svg) => svg.replace(/(clip|gradient_)\d+/g, '$1');
+		if (t.random) continue; // upstream resamples (bootstrap confidence intervals); the type says so
 		assert.equal(same(a), same(await renderSpec(spec, datasets)), `${t.id} is not deterministic`);
 	}
 });

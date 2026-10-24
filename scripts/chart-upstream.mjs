@@ -17,6 +17,11 @@ const VG = 'https://raw.githubusercontent.com/vega/vega/main/docs/examples/';
 // key: file under the repo's examples folder
 export const VEGA_LITE = [
 	'bar', 'point_2d', 'point_bubble', 'line', 'line_step', 'area', 'stacked_area', 'stacked_area_normalize', 'stacked_area_stream',
+	'line_slope', 'window_rank', 'layer_ranged_dot', 'facet_bullet', 'waterfall_chart', 'bar_diverging_stack_population_pyramid', 'rect_mosaic_labelled_with_offset', 'bar_gantt',
+	'area_cumulative_freq', 'layer_line_rolling_mean_point_raw', 'layer_dual_axis', 'layer_candlestick', 'area_horizon', 'trellis_bar_histogram', 'circle_wilkinson_dotplot',
+	'area_density', 'area_density_stacked', 'area_density_facet', 'boxplot_2D_vertical', 'tick_strip', 'layer_point_errorbar_ci', 'layer_line_errorband_ci',
+	'point_quantile_quantile', 'layer_point_line_regression', 'layer_point_line_loess', 'connected_scatterplot', 'parallel_coordinate', 'layer_text_heatmap',
+	'rect_binned_heatmap', 'arc_radial', 'interactive_splom',
 	'arc_pie', 'arc_donut', 'rect_heatmap', 'histogram', 'bar_aggregate', 'bar_grouped', 'stacked_bar_h', 'stacked_bar_normalize', 'layer_bar_labels',
 ];
 export const VEGA = [];
