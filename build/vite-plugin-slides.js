@@ -32,6 +32,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { SLIDE_RE, natSort, parseSlideFilename as parse } from '../scripts/lib/slide-files.js';
+import { createPrerender } from './mermaid.js';
 
 const DIR = 'slides';
 const MARKER = '<!-- @slides -->';
@@ -69,10 +70,13 @@ function assemble(root, read = (file) => fs.readFileSync(file, 'utf8')) {
 		groups.get(meta.major).push({ f, meta });
 	}
 
+	// Mermaid blocks are drawn by md-doc's renderer (build/mermaid.js).
+	const mermaid = createPrerender(root);
+
 	const out = [];
 	for (const [, items] of [...groups.entries()].sort((a, b) => a[0] - b[0])) {
 		const sections = items.map(({ f, meta }) => {
-			const raw = read(path.join(dir, f));
+			const raw = mermaid.transform(read(path.join(dir, f)), meta.ext);
 			return meta.ext === 'md'
 				? renderMd(raw, meta.slug)
 				: injectAttrs(raw.trim(), meta.slug);
@@ -83,7 +87,7 @@ function assemble(root, read = (file) => fs.readFileSync(file, 'utf8')) {
 				: sections[0]
 		);
 	}
-	return out.join('\n');
+	return out.join('\n') + mermaid.finalize();
 }
 
 // Reader that prefers the overlay's unsaved buffers, keyed 'slides/<file>', and

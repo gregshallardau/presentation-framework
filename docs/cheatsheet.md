@@ -397,6 +397,28 @@ not `src/`), listed in `src/components/registry.js` (framework machinery).
 - On a slide: place the tag, pass data through attributes / slots. Never style it
   from the slide.
 
+### Charts and diagrams shared with md-doc-pipeline
+
+Charts and diagrams use the **same source as md-doc-pipeline documents**, so a block copied
+between a document and a slide draws the same thing. Both are themed from the deck's
+custom properties (`--primary`, `--secondary`, `--fg`, `--muted`, `--line`, `--bg`,
+`--font-body`) and follow `[data-theme]`.
+
+- **Data chart (Vega-Lite or Vega)** - `<deck-chart-vega>` takes the spec as JSON, inline or in
+  `spec='...'`. It is interactive (tooltips, selections, bound controls); `ratio="16 / 9"` sets the
+  box (default `2 / 1`; do not use `.r-stretch`). `el.view` is the live Vega view.
+  ```html
+  <deck-chart-vega label="Revenue">
+    <script type="application/json">{"data":{"values":[…]},"mark":"line","encoding":{…}}</script>
+  </deck-chart-vega>
+  ```
+- **Diagram (Mermaid)** - in a `.md` slide, a fenced ```` ```mermaid ```` block; in an `.html` slide,
+  `<deck-mermaid><script type="text/mermaid">…</script></deck-mermaid>`. Drawn by md-doc's own
+  renderer (every diagram type it supports), once per theme, when slides are assembled - so
+  **md-doc must be runnable** at dev and build time: set `MD_DOC_CMD` to its command (for example
+  `uv run --project ../md-doc-pipeline md-doc`), or have `md-doc` on `PATH`. If it is not found the
+  slide shows the source with a note and the build warns.
+
 ---
 
 ## Logo & footer (deck chrome)
