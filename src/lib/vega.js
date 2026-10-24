@@ -176,6 +176,13 @@ const BUILTIN_DATA = {
 	'us-10m': () => import('./data/us-10m.json'),
 };
 const DATASET_SCHEME = 'vega-datasets:';
+/** The bundled basemap a `url` names: `vega-datasets:us-10m`, or upstream's own `data/us-10m.json`. */
+const builtinName = (url) => {
+	if (typeof url !== 'string') return null;
+	if (url.startsWith(DATASET_SCHEME)) return url.slice(DATASET_SCHEME.length);
+	const m = /^data\/([\w.-]+)\.json$/.exec(url);
+	return m && BUILTIN_DATA[m[1]] ? m[1] : null;
+};
 
 /** A copy of `spec` with every built-in dataset url replaced by inline values. */
 export async function resolveBuiltinData(spec) {
@@ -183,7 +190,7 @@ export async function resolveBuiltinData(spec) {
 	(function find(n) {
 		if (Array.isArray(n)) return n.forEach(find);
 		if (!n || typeof n !== 'object') return;
-		if (typeof n.url === 'string' && n.url.startsWith(DATASET_SCHEME)) names.add(n.url.slice(DATASET_SCHEME.length));
+		if (builtinName(n.url)) names.add(builtinName(n.url));
 		Object.values(n).forEach(find);
 	})(spec);
 	if (!names.size) return spec;
@@ -197,8 +204,8 @@ export async function resolveBuiltinData(spec) {
 		if (!n || typeof n !== 'object') return n;
 		const out = {};
 		for (const [k, v] of Object.entries(n)) out[k] = swap(v);
-		if (typeof out.url === 'string' && out.url.startsWith(DATASET_SCHEME)) {
-			out.values = data[out.url.slice(DATASET_SCHEME.length)];
+		if (builtinName(out.url)) {
+			out.values = data[builtinName(out.url)];
 			delete out.url;
 		}
 		return out;

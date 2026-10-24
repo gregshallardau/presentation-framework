@@ -374,19 +374,31 @@ element. A hash of what the wizard wrote lets it warn when the block was changed
 by hand has no saved settings, so it cannot be reopened. A host supplies `getSource()`,
 `replaceRange(start, end, code)` and `notify(message)` to `ChartWizard.edit(host)`.
 
-The wizard is the shared files `static/chart-*.js`: `chart-core.js` (data parsing, registries, YAML and
-JSON output), one `chart-types-*.js` module per chart family, `chart-geo-data.js` (country and state
-lookup tables for the map charts) and `chart-wizard.js` (the dialog). They are **canonical here**;
-md-doc-pipeline's studio carries byte-identical copies. After editing any of them:
+The wizard is the shared files `static/chart-*.js`: `chart-core.js` (data parsing, registries, the upstream
+fill, YAML and JSON output), `chart-templates.js` (the upstream Vega / Vega-Lite example specs, verbatim,
+**generated** by `node scripts/chart-upstream.mjs` from the lists at the top of that script; `--check` verifies
+it still matches upstream), `chart-types-upstream.js` (the chart types backed by those examples),
+`chart-types-custom.js` (types with no upstream example, written from the nearest example's own marks and
+transforms), `chart-types-flow.js`, `chart-geo-data.js` (country and state lookup tables) and
+`chart-wizard.js` (the dialog). They are **canonical here**; md-doc-pipeline's studio carries byte-identical
+copies. After editing any of them:
 
 ```
 node scripts/chart-manifest.mjs --copy ../md-doc-pipeline/md-doc-web-editor/md_doc_web_editor/static
 ```
 
 copies them across and refreshes `tests/chart-wizard.sha256.json` in both repos (a test in each compares
-the files with it). To add a chart type, register it with `ChartCatalog.type({...})` in the right family
-file (see the header of `chart-core.js`); `npm run test:editor` then renders it from its sample, checks
-it is deterministic, and runs every option, and md-doc's tests check the handbook lists it.
+the files with it).
+
+**How a chart is built.** `ChartCatalog.upstream({ id, roles, templates: [{ key, fields, edits }] })` takes an
+upstream template, puts the user's rows where the example's data was, and renames the example's field names
+to the user's columns. Nothing else may change: anything beyond that is a declared `edit` with its reason
+(`ChartCatalog.EDITS`; `node scripts/chart-docs.mjs` prints them into the handbook). Options exist only where
+upstream has the feature (a variant example, or a documented property). A template that reuses an input field
+name for a value it computes sets `rename: 'data'`, which keeps the spec byte-for-byte and gives the data the
+example's column names instead. `npm run test:editor` renders every type from its sample, checks it is
+deterministic (a type with `random` is exempt: upstream resamples), and checks no template collides with a
+computed field name; md-doc's tests check the handbook lists every type.
 
 - `node scripts/chart-check.mjs [ids…] [--out DIR]` renders every chart type from its sample with the
   deck's Vega engine and reports failures (`--out` writes the specs for other renderers).
