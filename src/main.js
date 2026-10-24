@@ -34,6 +34,10 @@ deck.initialize().then(() => {
 	if (chrome) mountChrome(chrome);
 	initGsap();
 	initAlpine();
+	// Slide camera (data-camera): loaded only for decks that use it, since it pulls in d3.
+	if (document.querySelector('section[data-camera]')) {
+		import('@/lib/slide-camera.js').then((m) => m.initSlideCamera(deck));
+	}
 });
 
 window.Reveal = deck;

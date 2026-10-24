@@ -1,0 +1,23 @@
+<section id="camera-demo" data-slug="camera-demo" data-camera data-transition="fade">
+	<h2>One slide, a moving camera</h2>
+	<!-- The slide is laid out once. Each press shows a caption and the camera
+	     flies to its data-camera target: an element, a position, or home.
+	     Guide: docs/camera.md -->
+	<div class="flex-cols">
+		<deck-chart-line id="trend" label="Monthly rent" data='[{"x":"Jan","y":2200},{"x":"Feb","y":2200},{"x":"Mar","y":2350},{"x":"Apr","y":2600},{"x":"May","y":3100},{"x":"Jun","y":3400}]'></deck-chart-line>
+		<div class="flex-rows">
+			<div id="rent" class="box primary"><strong>Rent</strong><br>up 55% in six months</div>
+			<div id="food" class="box success"><strong>Food</strong><br>flat</div>
+			<div id="fun" class="box warning"><strong>Fun</strong><br>the lever</div>
+		</div>
+	</div>
+	<p class="fragment" data-camera="#trend">The trend: it accelerates in spring.</p>
+	<p class="fragment" data-camera="#rent">Rent is the whole story.</p>
+	<p class="fragment" data-camera="70% 58% 2x">A position: 70% across, 58% down, at 2x.</p>
+	<p class="fragment" data-camera="home">And back out to the whole picture.</p>
+	<aside class="notes">
+		Starts on the full slide. Press: push in on the chart. Press: across to
+		the Rent box. Press: fly to a fixed point (70% across, 58% down, 2x),
+		which lands on the Fun box. Press: back to the whole slide.
+	</aside>
+</section>

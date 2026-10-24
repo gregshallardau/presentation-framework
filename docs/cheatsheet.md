@@ -348,6 +348,22 @@ preview to animate, auto-animate, style or edit it in place
 
 ---
 
+## Camera moves on a slide
+
+`data-camera` on a `<section>` turns on a camera; a fragment with `data-camera="<target>"`
+flies it there when it is shown. Full guide: [`camera.md`](./camera.md).
+
+```html
+<section data-camera>
+  ...
+  <p class="fragment" data-camera="#chart">push in on an element</p>
+  <p class="fragment" data-camera="25% 30% 2x">or a position, at 2x</p>
+  <p class="fragment" data-camera="home">pull back out</p>
+</section>
+```
+
+---
+
 ## Slide backgrounds & transitions
 
 Attributes on `<section>` (in `.md`, use `<!-- .slide: ... -->`).

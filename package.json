@@ -82,6 +82,7 @@
 		"make:slide": "node scripts/make-slide.js",
 		"make:component": "node scripts/make-component.js",
 		"test:editor": "node --test editor/tests/*.test.js",
+		"test:camera": "node --test src/lib/*.test.js",
 		"test:editor:browser": "node editor/tests/browser/smoke.mjs"
 	},
 	"author": "Greg Shallard",

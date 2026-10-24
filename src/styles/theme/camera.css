@@ -1,0 +1,43 @@
+/*
+ * SLIDE CAMERA - structural CSS for `<section data-camera>` (src/lib/slide-camera.js).
+ *
+ * The script wraps the slide's content in .camera-world and gives the section a
+ * fixed frame. Everything is scoped to `:has(> .camera-world)` so a camera
+ * slide looks like any other until the script has mounted it.
+ *
+ * The slide gutter (--slide-padding) moves from the section onto the world, so
+ * the content lays out exactly as it would without a camera and the section can
+ * clip to its edge. `overflow: clip` (not hidden): no scroll container, and
+ * Reveal's centring maths (scrollHeight) sees a frame the size of the slide.
+ */
+@layer theme {
+	.reveal .slides section[data-camera]:has(> .camera-world) {
+		padding: 0;
+		overflow: clip;
+	}
+	.reveal .slides section[data-camera] > .camera-world {
+		box-sizing: border-box;
+		width: 100%;
+		height: 100%;
+		padding: var(--slide-padding);
+		transform-origin: 0 0;
+	}
+	/* Reveal's `center: true` centres a slide's content vertically */
+	.reveal .slides section[data-camera] > .camera-world[data-centered] {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+	}
+	/* [data-fixed] children: above the camera, in the same gutter, click-through
+	   except for the elements themselves */
+	.reveal .slides section[data-camera] > .camera-fixed {
+		position: absolute;
+		inset: 0;
+		box-sizing: border-box;
+		padding: var(--slide-padding);
+		pointer-events: none;
+	}
+	.reveal .slides section[data-camera] > .camera-fixed > * {
+		pointer-events: auto;
+	}
+}

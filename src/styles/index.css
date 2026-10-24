@@ -10,6 +10,7 @@
 @import './vars/primitives.css';
 @import './vars/semantic.css';
 @import './theme/deck.css';
+@import './theme/camera.css';
 
 /* Deck-level look. Root-level file (the one a deck author edits); @layer deck,
    which the order in layers.css pins as the second-highest layer. */

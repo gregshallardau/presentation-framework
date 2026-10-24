@@ -40,6 +40,7 @@ src/
     vars/primitives.css         TIER 1 - raw values (@layer vars.primitive)
     vars/semantic.css           TIER 2 - role names + [data-theme] skins (@layer vars.semantic)
     theme/deck.css              maps semantic vars -> Reveal --r-* API (@layer theme). Plumbing only.
+    theme/camera.css            structural CSS for `[data-camera]` slides (@layer theme)
   components/                  FRAMEWORK MACHINERY (the contract) - NOT a deck's own components,
                                see components/ at repo root for those
     deck-element.js             DeckElement base class
@@ -49,6 +50,10 @@ src/
                                 imported (never copied) into every component's static styles
     README.md                   the component contract
   lib/
+    camera.js                   makeCamera() / fitView() - pan+zoom over a world (d3.interpolateZoom)
+    slide-camera.js             `<section data-camera>` + fragment cues, see docs/camera.md;
+                                loaded lazily by main.js only when a deck uses it
+    camera-targets.js           its target grammar + view maths (pure, tested: npm run test:camera)
     gsap.js                     initGsap() - hero / section-break motion
     d3.js                       d3 + topojson + readPalette(); imported lazily by components
     alpine.js                   initAlpine() - reactive UI + Alpine.store('deck') cross-slide state

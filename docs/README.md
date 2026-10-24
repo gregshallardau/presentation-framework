@@ -4,6 +4,7 @@
 |---|---|
 | [`cheatsheet.md`](./cheatsheet.md) | authoring a slide: what tag / class / attribute to write, and the knob that restyles it. Start here. |
 | [`framework-conventions.md`](./framework-conventions.md) | the architecture: CSS custom-property tiers, cascade layers, the component contract, slide portability, assembly. The authoring skills read this first. |
+| [`camera.md`](./camera.md) | the slide camera: `data-camera` on a section, and fragments that push in, pan, or pull back to an element or a `25% 30% 2x` position. |
 | [`plan-format.md`](./plan-format.md) | the `presentation-plan.md` schema - written by `presentation-planner`, read by `deck-builder`. |
 
 Also worth knowing:
