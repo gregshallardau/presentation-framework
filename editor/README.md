@@ -360,7 +360,7 @@ prints a folder of step-by-step screenshots.
 ## Chart wizard
 
 **Insert → Chart…** opens a four-step builder (type, data, customize, insert) for Vega-Lite and Vega
-charts: 87 chart types in 11 groups, with a searchable picker whose thumbnails are drawn from each
+charts: 86 chart types in 11 groups, with a searchable picker whose thumbnails are drawn from each
 chart's own sample data. Paste a table or edit the sample; pick columns and options; it inserts a
 ```` ```chart ```` block in a `.md` slide or a `<deck-chart-vega>` in an `.html` slide, at the cursor.
 The preview uses the Vega packages from `node_modules` (`/__editor/vendor/vega/`) and the bundled

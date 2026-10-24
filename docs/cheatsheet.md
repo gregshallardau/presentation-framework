@@ -407,7 +407,7 @@ custom properties (`--primary`, `--secondary`, `--fg`, `--muted`, `--line`, `--b
 - **Don't hand-write a chart: use the wizard.** In deck studio, **Insert → Chart…** is a step-by-step
   builder (type, data, customize, with a live preview) that inserts the right block for the file you
   are in: a ```` ```chart ```` block in a `.md` slide, a `<deck-chart-vega>` in an `.html` slide. It
-  offers **87 chart types** in 11 groups (bars and comparisons, change over time, distributions,
+  offers **86 chart types** in 11 groups (bars and comparisons, change over time, distributions,
   relationships, parts of a whole, heatmaps, KPIs, hierarchies, flows and networks, word clouds and
   maps), each shown as a thumbnail drawn from its own sample data; search by name. Maps use bundled
   basemaps, so they work offline. To change a chart later, right-click it (in the code or on the slide) and choose **Edit chart…**: the wizard reads the block itself, opens on the same chart type with your data and columns filled in, and replaces the block in place. Nothing is stored in the block, so a chart pasted from the Vega docs opens the same way.
