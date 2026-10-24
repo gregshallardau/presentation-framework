@@ -126,6 +126,8 @@ export function createProbe(win) {
 		if (!el || el.nodeType !== 1 || el.closest(`#${OVERLAY_ID}`)) return null;
 		const slide = el.closest('section');
 		if (!slide) return null;
+		const chart = el.closest('deck-chart-vega'); // a chart is one thing to pick, whichever mark was clicked
+		if (chart && slide.contains(chart)) return chart;
 		if (slide.closest('[data-markdown]') || slide.hasAttribute('data-markdown')) {
 			return el.matches('img') ? el : el.closest(BLOCKS);
 		}

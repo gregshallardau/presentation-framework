@@ -17,6 +17,7 @@
  * `build:deck`.
  */
 import { randomBytes } from 'node:crypto';
+import YAML from 'yaml';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -136,6 +137,16 @@ export default function deckEditor({ overlay, allowedHosts = [] } = {}) {
 				}
 				throw new HttpError(400, `Unknown file action "${action}"`);
 			});
+		},
+		// A chart block's YAML (or JSON) as a spec, so the chart wizard can read an existing chart back.
+		'POST /api/charts/parse': ({ body }) => {
+			try {
+				const spec = YAML.parse(String(body.source ?? ''));
+				if (!spec || typeof spec !== 'object' || Array.isArray(spec)) throw new Error('a chart spec must be a mapping (Vega-Lite or Vega)');
+				return { spec };
+			} catch (error) {
+				throw new HttpError(400, `Invalid chart spec: ${String(error.message).split('\n')[0]}`);
+			}
 		},
 		'GET /api/changes': async () => ({ signature: await changeSignature(root) }),
 		'GET /api/search': async ({ query }) => ({ results: await search(root, query.get('q')) }),

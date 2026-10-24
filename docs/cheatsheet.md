@@ -410,7 +410,7 @@ custom properties (`--primary`, `--secondary`, `--fg`, `--muted`, `--line`, `--b
   offers **87 chart types** in 11 groups (bars and comparisons, change over time, distributions,
   relationships, parts of a whole, heatmaps, KPIs, hierarchies, flows and networks, word clouds and
   maps), each shown as a thumbnail drawn from its own sample data; search by name. Maps use bundled
-  basemaps, so they work offline. To change a chart later, put the cursor in its block and use **Insert → Edit chart at cursor**: it reopens on the same chart type with the data and options restored and replaces the block in place (charts written by hand cannot be reopened). The full list is in md-doc-pipeline's handbook (`#markdown-charts-catalogue`).
+  basemaps, so they work offline. To change a chart later, right-click it (in the code or on the slide) and choose **Edit chart…**: the wizard reads the block itself, opens on the same chart type with your data and columns filled in, and replaces the block in place. Nothing is stored in the block, so a chart pasted from the Vega docs opens the same way.
 - **Data chart (Vega-Lite or Vega)** - in a `.md` slide, a fenced ```` ```chart ```` block holding the
   spec as YAML or JSON (the same block md-doc-pipeline documents use; `vega-lite` / `vega` fences work too,
   options after the language become attributes: ```` ```chart ratio="16 / 9" ````). In an `.html` slide,

@@ -416,6 +416,8 @@
 							$('monaco'),
 							sourceEditorOptions({ value: '', language: 'deck-markdown' })
 						);
+						// Right-click inside a chart block: Edit chart…
+						window.ChartWizard?.bindEditor(state.editor, () => (current() ? chartHost() : null));
 						state.editor.onDidChangeModelContent(() => {
 							if (!state.switching) changed(state.editor.getValue());
 						});
@@ -1319,6 +1321,13 @@
 				buffer: bufferText,
 				setContent,
 				frameCurrent: () => state.frameVersion === state.editVersion,
+				// A chart right-clicked in the preview: reopen the wizard on the block holding that chart's spec.
+				editChart: (chartEl) => {
+					const inline = chartEl.querySelector('script[type="application/json"]');
+					let spec;
+					try { spec = JSON.parse(chartEl.getAttribute('spec') || (inline && inline.textContent)); } catch { return toast('That chart’s spec could not be read.', true); }
+					window.ChartWizard.edit(chartHost(), { spec });
+				},
 				refreshPreview: () => schedulePreview(0),
 				openAt: (path, line) => openFile(path, line, { follow: false }),
 				quietSlide,
@@ -2124,6 +2133,7 @@
 					changed(state.fallback.value);
 				}
 			},
+			parseSpec: async (source) => (await api('/api/charts/parse', { method: 'POST', body: JSON.stringify({ source }) })).spec,
 			notify: (message) => toast(message, true),
 		};
 	}

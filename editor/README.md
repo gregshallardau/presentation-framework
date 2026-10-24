@@ -366,13 +366,14 @@ chart's own sample data. Paste a table or edit the sample; pick columns and opti
 The preview uses the Vega packages from `node_modules` (`/__editor/vendor/vega/`) and the bundled
 basemaps in `src/lib/data/` (`/__editor/vendor/vega-datasets/`); nothing is fetched.
 
-**Insert → Edit chart at cursor** reopens the wizard on the chart block the cursor is in (a ```` ```chart ````
-fence in a `.md` slide, a `<deck-chart-vega>` in an `.html` slide), locked to that chart's own type, with
-its data, columns and options restored; **Update chart** replaces the block in place. The settings are
-saved with the block: a `# chart-wizard: {…}` comment line in the fence, a `data-wizard` attribute on the
-element. A hash of what the wizard wrote lets it warn when the block was changed by hand. A chart written
-by hand has no saved settings, so it cannot be reopened. A host supplies `getSource()`,
-`replaceRange(start, end, code)` and `notify(message)` to `ChartWizard.edit(host)`.
+**Right-click → Edit chart…** inside a chart block (a ```` ```chart ```` fence in a `.md` slide, a `<deck-chart-vega>`
+in an `.html` slide), **Insert → Edit chart at cursor**, or a right-click on the chart in the preview, reopens the
+wizard on that chart. Nothing is stored in the block: `ChartCatalog.readSpec(spec)` recognises which upstream example
+the spec is (by walking each template beside it and rebuilding; the chart is that type when the rebuild equals the
+block, titles and rows aside), takes the table out of the data and finds the columns that fill the example's fields,
+so a chart pasted from the Vega docs or edited by hand opens the same way. The type is locked while editing, and
+**Update chart** replaces the block in place. YAML is parsed by the editor server (`POST /api/charts/parse`); a host
+supplies `getSource()`, `parseSpec()`, `replaceRange()` and `notify()` to `ChartWizard.edit(host)`.
 
 The wizard is the shared files `static/chart-*.js`: `chart-core.js` (data parsing, registries, the upstream
 fill, YAML and JSON output), `chart-templates.js` (the upstream Vega / Vega-Lite example specs, verbatim,

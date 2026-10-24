@@ -147,54 +147,64 @@ test('built-in datasets resolve locally and unknown ones fail loudly', async () 
 	assert.ok(JSON.stringify(out).includes('"Topology"'));
 });
 
-test('every chart reopens from its own block, as that type, in both block formats', () => {
+test('every chart is read back from its spec alone: same type, same data, same columns', () => {
 	for (const t of C.TYPES) {
 		const st = C.sampleState(t);
-		st.userTyped = {};
-		const spec = C.buildSpec(st);
-		for (const format of ['yaml-fence', 'deck-element']) {
-			const code = C.codeFor(format, spec, 'A label', st);
-			const doc = `Intro\n\n${code}\nOutro\n`;
-			const hit = C.findBlock(doc, doc.indexOf('Intro') + 12, format);
-			assert.ok(hit, `${t.id}/${format}: block not found`);
-			assert.equal(hit.text, code, `${t.id}/${format}: the block is the whole thing, nothing around it`);
-			assert.equal(C.findBlock(doc, 2, format), null, `${t.id}/${format}: the cursor outside a block finds none`);
-			const read = C.readBlock(hit.text, format);
-			assert.ok(!read.error, `${t.id}/${format}: ${read.error}`);
-			assert.equal(read.edited, false, `${t.id}/${format}: untouched block reads as edited`);
-			assert.equal(read.state.type, t.id);
-			assert.deepEqual(plain(read.state.table), plain(st.table));
-			assert.deepEqual(plain(read.state.map), plain(st.map));
-			// the restored state rebuilds the very same chart
-			assert.deepEqual(plain(C.buildSpec({ ...read.state, opts: read.state.opts })), plain(spec), `${t.id}/${format}: rebuilt chart differs`);
-		}
+		const spec = plain(C.buildSpec(st));
+		const got = C.readSpec(spec).filter((g) => g.type === t.id);
+		assert.ok(got.length, `${t.id}: not recognised from its own spec`);
+		assert.equal(got[0].state.table.rows.length, st.table.rows.length, `${t.id}: rows`);
+		// rebuilding from what was read gives the same chart back
+		assert.deepEqual(plain(C.comparable(C.buildSpec(got[0].state))), plain(C.comparable(spec)), `${t.id}: rebuilt chart differs`);
 	}
 });
 
-test('the settings comment does not change how the chart block parses', () => {
+test('blocks carry nothing but the spec, in both formats, and are found by the cursor', () => {
 	const st = C.sampleState(C.chartType('bar'));
 	const spec = C.buildSpec(st);
-	const code = C.codeFor('yaml-fence', spec, '', st);
-	assert.match(code, /^```chart\n# chart-wizard: \{/);
-	assert.deepEqual(plain(YAML.parse(code.split('\n').slice(1, -2).join('\n'))), plain(spec));
+	for (const format of ['yaml-fence', 'deck-element']) {
+		const code = C.codeFor(format, spec, 'A label');
+		assert.ok(!/wizard|usermeta/i.test(code), `${format}: no wizard bookkeeping in the block`);
+		assert.ok(!code.split('\n').some((l) => /^#/.test(l)), `${format}: no comment lines`);
+		const doc = `Intro\n\n${code}\nOutro\n`;
+		const hit = C.findBlock(doc, doc.indexOf('Intro') + 12, format);
+		assert.equal(hit.text, code);
+		assert.equal(C.findBlock(doc, 2, format), null);
+		assert.deepEqual(format === 'deck-element' ? JSON.parse(C.blockSource(hit.text, format)) : YAML.parse(C.blockSource(hit.text, format)), plain(spec));
+	}
 });
 
-test('a block changed by hand is flagged; a block the wizard did not write is refused', () => {
-	const st = C.sampleState(C.chartType('line'));
-	for (const format of ['yaml-fence', 'deck-element']) {
-		const code = C.codeFor(format, C.buildSpec(st), '', st);
-		const tweaked = format === 'yaml-fence' ? code.replace('mark:', 'mark_:') : code.replace('"mark"', '"mark_"');
-		assert.notEqual(tweaked, code);
-		assert.equal(C.readBlock(tweaked, format).edited, true, format);
-		// re-indenting alone is not an edit
-		assert.equal(C.readBlock(code.replace(/\n {2}/g, '\n    '), format).edited, false, format);
-	}
-	assert.match(C.readBlock('```chart\nmark: bar\n```\n', 'yaml-fence').error, /not made by the wizard/);
-	assert.match(C.readBlock('<deck-chart-vega>\n<script type="application/json">{}</script>\n</deck-chart-vega>', 'deck-element').error, /not made by the wizard/);
-	const bad = C.codeFor('yaml-fence', C.buildSpec(st), '', st).replace(/"t":"line"/, '"t":"nope"');
-	assert.match(C.readBlock(bad, 'yaml-fence').error, /does not have/);
-	const gone = C.codeFor('yaml-fence', C.buildSpec(st), '', st).replace(/"m":\{[^}]*\}/, '"m":{"x":"missing_col"}');
-	assert.match(C.readBlock(gone, 'yaml-fence').error, /no longer there/);
+test('an edited block is read as the same chart with the new data, titles and legend', () => {
+	const st = C.sampleState(C.chartType('bar-grouped'));
+	const spec = plain(C.buildSpec({ ...st, opts: { title: 'Sales', xTitle: 'Quarter', yTitle: 'Revenue', legend: false } }));
+	spec.data.values[0].Value = 999; // the user changes a number in the block
+	const got = C.readSpec(spec).find((g) => g.type === 'bar-grouped');
+	assert.ok(got, 'still a grouped bar');
+	assert.equal(got.state.table.rows[0][got.state.table.columns.indexOf('Value')], '999');
+	assert.deepEqual(plain(got.state.map), plain(st.map));
+	assert.equal(got.state.opts.title, 'Sales');
+	assert.equal(got.state.opts.xTitle, 'Quarter');
+	assert.equal(got.state.opts.yTitle, 'Revenue');
+	assert.equal(got.state.opts.legend, false);
+});
+
+test('option variants are read from which upstream example the block is', () => {
+	const labelled = plain(C.buildSpec({ ...C.sampleState(C.chartType('hbar')), opts: { labels: true } }));
+	assert.equal(C.readSpec(labelled).find((g) => g.type === 'hbar').state.opts.labels, true);
+	const loess = plain(C.buildSpec({ ...C.sampleState(C.chartType('scatter-trend')), opts: { fit: 'loess' } }));
+	assert.equal(C.readSpec(loess).find((g) => g.type === 'scatter-trend').state.opts.fit, 'loess');
+});
+
+test('an upstream example pasted by hand, with the user’s own columns, is recognised', () => {
+	const spec = plain(C.TEMPLATES['vega-lite/point_2d'].spec);
+	spec.data = { values: [{ height: 170, weight: 65 }, { height: 182, weight: 80 }, { height: 158, weight: 52 }] };
+	spec.encoding.x.field = 'height';
+	spec.encoding.y.field = 'weight';
+	const got = C.readSpec(spec).find((g) => g.type === 'scatter');
+	assert.ok(got);
+	assert.equal(got.state.map.x, 'height');
+	assert.equal(got.state.map.y, 'weight');
+	assert.equal(C.readSpec({ mark: 'bar', data: { values: [{ a: 1 }] }, encoding: { x: { field: 'a', type: 'nominal' }, y: { aggregate: 'count' }, color: { value: 'red' } } }).filter((g) => g.type === 'scatter').length, 0);
 });
 
 test('Venn, pictogram and contour plots are in the catalogue', () => {
