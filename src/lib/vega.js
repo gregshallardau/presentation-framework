@@ -9,6 +9,8 @@
  * in step when either changes.
  */
 
+// Charts lead with the brand primary only; the rest are the validated categorical slots
+// (a quiet secondary colour such as charcoal makes a poor second series).
 // Validated categorical slots, fixed order (shared with md-doc-pipeline's
 // mermaid.py `_CATEGORICAL` / `_CATEGORICAL_DARK`).
 const CATEGORICAL = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948'];
@@ -92,7 +94,7 @@ function rgbLuminance(hex) {
 /** Vega `config` from theme tokens - same keys as md_doc.charts.vega_config. */
 export function vegaConfig(t) {
 	const k = t.scale || 1; // slides are drawn on a 1920px canvas: type and strokes scale up
-	const palette = seriesPalette([t.primary, t.secondary], t.dark);
+	const palette = seriesPalette([t.primary], t.dark);
 	return {
 		background: null,
 		font: t.font,
@@ -114,6 +116,7 @@ export function vegaConfig(t) {
 			labelPadding: 2 * k,
 			labelAngle: 0,
 			labelOverlap: true,
+			labelSeparation: 6,
 		},
 		legend: {
 			labelFont: t.font,
@@ -140,12 +143,67 @@ export function isVega(spec) {
 }
 
 /** Defaults a slide needs, mirroring charts.prepare_spec (size via the host box). */
+const COMPOUND_KEYS = ['repeat', 'facet', 'concat', 'hconcat', 'vconcat'];
+
 export function prepareSpec(spec) {
 	const out = { ...spec };
+	// Repeats, facets and concatenations size their inner views; a top-level width would be invalid.
+	if (COMPOUND_KEYS.some((k) => k in out)) return out;
 	if (out.width === undefined) out.width = 'container';
 	if (out.height === undefined) out.height = 'container';
 	if (out.autosize === undefined) out.autosize = { type: 'fit', contains: 'padding' };
 	return out;
+}
+
+/** True when the spec carries its own layout (a full Vega spec, a compound spec, or a numeric size). */
+export function isFixedLayout(spec) {
+	return isVega(spec) || COMPOUND_KEYS.some((k) => k in spec) || (typeof spec.width === 'number' && typeof spec.height === 'number');
+}
+
+/** A full Vega spec with no size gets a document-column default (mirrors md-doc's charts.prepare_spec). */
+export function prepareFixed(spec) {
+	const out = { ...spec };
+	if (isVega(out) && !COMPOUND_KEYS.some((k) => k in out)) {
+		if (typeof out.width !== 'number') out.width = 560;
+		if (typeof out.height !== 'number') out.height = 360;
+	}
+	return out;
+}
+
+// Basemaps referenced as `url: vega-datasets:<name>` - bundled, never fetched (see ./data/README.md).
+const BUILTIN_DATA = {
+	'world-110m': () => import('./data/world-110m.json'),
+	'us-10m': () => import('./data/us-10m.json'),
+};
+const DATASET_SCHEME = 'vega-datasets:';
+
+/** A copy of `spec` with every built-in dataset url replaced by inline values. */
+export async function resolveBuiltinData(spec) {
+	const names = new Set();
+	(function find(n) {
+		if (Array.isArray(n)) return n.forEach(find);
+		if (!n || typeof n !== 'object') return;
+		if (typeof n.url === 'string' && n.url.startsWith(DATASET_SCHEME)) names.add(n.url.slice(DATASET_SCHEME.length));
+		Object.values(n).forEach(find);
+	})(spec);
+	if (!names.size) return spec;
+	const data = {};
+	for (const name of names) {
+		if (!BUILTIN_DATA[name]) throw new Error(`Unknown built-in dataset “${name}” (available: ${Object.keys(BUILTIN_DATA).join(', ')})`);
+		data[name] = (await BUILTIN_DATA[name]()).default;
+	}
+	const swap = (n) => {
+		if (Array.isArray(n)) return n.map(swap);
+		if (!n || typeof n !== 'object') return n;
+		const out = {};
+		for (const [k, v] of Object.entries(n)) out[k] = swap(v);
+		if (typeof out.url === 'string' && out.url.startsWith(DATASET_SCHEME)) {
+			out.values = data[out.url.slice(DATASET_SCHEME.length)];
+			delete out.url;
+		}
+		return out;
+	};
+	return swap(spec);
 }
 
 export async function loadEmbed() {

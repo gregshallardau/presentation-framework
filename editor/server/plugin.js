@@ -218,6 +218,12 @@ export default function deckEditor({ overlay, allowedHosts = [] } = {}) {
 				cache: true,
 			});
 		}
+		if (sub.startsWith('/vendor/vega-datasets/')) {
+			// Built-in basemaps for the chart wizard's preview (the same files the deck component uses).
+			const name = decodeURIComponent(sub.slice('/vendor/vega-datasets/'.length));
+			if (!/^(world-110m|us-10m)\.json$/.test(name)) throw new HttpError(404, `No dataset ${name}`);
+			return serveStatic(res, path.join(root, 'src', 'lib', 'data') + path.sep, name, { cache: true });
+		}
 		if (sub.startsWith('/vendor/vega/')) {
 			// The chart wizard's live preview: the same Vega packages the deck's <deck-chart-vega> uses.
 			const file = decodeURIComponent(sub.slice('/vendor/vega/'.length));

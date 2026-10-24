@@ -359,13 +359,27 @@ prints a folder of step-by-step screenshots.
 
 ## Chart wizard
 
-**Insert → Chart…** opens a four-step builder (type, data, customize, insert) for
-Vega-Lite charts, with a live preview. Paste a table or edit the sample; pick columns
-and options; it inserts a ```` ```chart ```` block in a `.md` slide or a
-`<deck-chart-vega>` in an `.html` slide, at the cursor. The preview uses the Vega
-packages from `node_modules`, served at `/__editor/vendor/vega/`.
+**Insert → Chart…** opens a four-step builder (type, data, customize, insert) for Vega-Lite and Vega
+charts: 84 chart types in 11 groups, with a searchable picker whose thumbnails are drawn from each
+chart's own sample data. Paste a table or edit the sample; pick columns and options; it inserts a
+```` ```chart ```` block in a `.md` slide or a `<deck-chart-vega>` in an `.html` slide, at the cursor.
+The preview uses the Vega packages from `node_modules` (`/__editor/vendor/vega/`) and the bundled
+basemaps in `src/lib/data/` (`/__editor/vendor/vega-datasets/`); nothing is fetched.
 
-`static/chart-wizard.js` is the canonical copy of a file shared with
-md-doc-pipeline's studio, which carries a byte-identical copy. A test compares its
-SHA-256 with `tests/chart-wizard.sha256`; when you change it, copy it over and update
-that hash file in both repos.
+The wizard is the shared files `static/chart-*.js`: `chart-core.js` (data parsing, registries, YAML and
+JSON output), one `chart-types-*.js` module per chart family, `chart-geo-data.js` (country and state
+lookup tables for the map charts) and `chart-wizard.js` (the dialog). They are **canonical here**;
+md-doc-pipeline's studio carries byte-identical copies. After editing any of them:
+
+```
+node scripts/chart-manifest.mjs --copy ../md-doc-pipeline/md-doc-web-editor/md_doc_web_editor/static
+```
+
+copies them across and refreshes `tests/chart-wizard.sha256.json` in both repos (a test in each compares
+the files with it). To add a chart type, register it with `ChartCatalog.type({...})` in the right family
+file (see the header of `chart-core.js`); `npm run test:editor` then renders it from its sample, checks
+it is deterministic, and runs every option, and md-doc's tests check the handbook lists it.
+
+- `node scripts/chart-check.mjs [ids…] [--out DIR]` renders every chart type from its sample with the
+  deck's Vega engine and reports failures (`--out` writes the specs for other renderers).
+- `node scripts/chart-docs.mjs` prints the catalogue as Markdown tables for the handbook.

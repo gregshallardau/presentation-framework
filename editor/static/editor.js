@@ -2100,7 +2100,9 @@
 		window.ChartWizard.open({
 			// .md slides take a ```chart block (the same one md-doc documents use); .html slides a <deck-chart-vega>
 			format: markdown ? 'yaml-fence' : 'deck-element',
+			scriptBase: '/__editor',
 			vendorBase: '/__editor/vendor/vega',
+			datasetBase: '/__editor/vendor/vega-datasets',
 			getConfig: async () => {
 				const mod = await import('/src/lib/vega.js');
 				return mod.vegaConfig({ dark: false, scale: 1, font: 'Inter, Helvetica, Arial, sans-serif', ink: '#0b0c0e', ink2: '#5b616e', line: '#9aa0ac', grid: '#cdd0d6', primary: '#2563eb', secondary: '#3a3f4a' });

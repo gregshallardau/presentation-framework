@@ -11,7 +11,7 @@
 // deck theme (see src/lib/vega.js).
 import { DeckElement } from '@/components/deck-element.js';
 import { SHARED_STYLES } from '@/components/shared-styles.js';
-import { isVega, loadEmbed, prepareSpec, readTokens, vegaConfig } from '@/lib/vega.js';
+import { isFixedLayout, isVega, loadEmbed, prepareFixed, prepareSpec, readTokens, resolveBuiltinData, vegaConfig } from '@/lib/vega.js';
 
 const SAMPLE = {
 	data: {
@@ -79,7 +79,7 @@ class DeckChartVega extends DeckElement {
 		this._applyRatio();
 		this._draw();
 
-		this._ro = new ResizeObserver(() => this.view?.resize().runAsync());
+		this._ro = new ResizeObserver(() => { if (this.view && !this._fixed) this.view.resize().runAsync(); });
 		this._ro.observe(this);
 		// Re-theme live when [data-theme] / class changes on the root.
 		this._mo = new MutationObserver(() => this._draw());
@@ -98,6 +98,16 @@ class DeckChartVega extends DeckElement {
 		if (!this._upgraded) return;
 		if (name === 'ratio') return this._applyRatio();
 		this._draw();
+	}
+
+	/** Scale a fixed-layout chart's SVG to the box (keeping its proportions). */
+	_fitSvg() {
+		const svg = this._chart.querySelector('svg');
+		const w = parseFloat(svg?.getAttribute('width')), h = parseFloat(svg?.getAttribute('height'));
+		if (!svg || !w || !h) return;
+		svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+		svg.style.width = '100%';
+		svg.style.height = '100%';
 	}
 
 	/** `ratio="16 / 9"` sets the chart box; default 2 / 1. Don't use .r-stretch (it ignores slide padding). */
@@ -122,9 +132,15 @@ class DeckChartVega extends DeckElement {
 		try {
 			const embed = await loadEmbed();
 			if (token !== this._token) return; // a newer draw superseded this one
-			const config = vegaConfig(readTokens(this, SLIDE_SCALE));
-			const result = await embed(this._chart, prepareSpec(spec), {
-				mode: isVega(spec) ? 'vega' : 'vega-lite',
+			const resolved = await resolveBuiltinData(spec);
+			if (token !== this._token) return;
+			// A chart that carries its own layout (full Vega, compound, fixed size) is drawn at its size and
+			// scaled to the box, so type and strokes scale with it; a responsive Vega-Lite chart is sized by the
+			// box and its type is scaled up for the 1920px slide.
+			const fixed = (this._fixed = isFixedLayout(resolved));
+			const config = vegaConfig(readTokens(this, fixed ? 1 : SLIDE_SCALE));
+			const result = await embed(this._chart, fixed ? prepareFixed(resolved) : prepareSpec(resolved), {
+				mode: isVega(resolved) ? 'vega' : 'vega-lite',
 				renderer: 'svg',
 				actions: false,
 				config,
@@ -134,6 +150,7 @@ class DeckChartVega extends DeckElement {
 				return;
 			}
 			this.view = result.view;
+			if (fixed) this._fitSvg();
 			this.dispatchEvent(new CustomEvent('chart-ready', { detail: { view: this.view } }));
 		} catch (e) {
 			this._chart.textContent = '';
