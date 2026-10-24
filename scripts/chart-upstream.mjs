@@ -24,7 +24,10 @@ export const VEGA_LITE = [
 	'rect_binned_heatmap', 'arc_radial', 'interactive_splom',
 	'arc_pie', 'arc_donut', 'rect_heatmap', 'histogram', 'bar_aggregate', 'bar_grouped', 'stacked_bar_h', 'stacked_bar_normalize', 'layer_bar_labels',
 ];
-export const VEGA = [];
+export const VEGA = [
+	'treemap', 'sunburst', 'circle-packing', 'tree-layout', 'radial-tree-layout', 'radar-chart', 'word-cloud', 'calendar-view', 'violin-plot', 'contour-plot',
+	'edge-bundling', 'force-directed-layout', 'arc-diagram',
+];
 
 const OUT = new URL('../editor/static/chart-templates.js', import.meta.url);
 

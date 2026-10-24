@@ -62,6 +62,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 		try {
 			const spec = C.sampleSpec(t);
 			if (out) writeFileSync(`${out}/${t.id}.json`, JSON.stringify(spec));
+			if (t.browserOnly) { console.log(`skip ${t.id.padEnd(22)} ${t.browserOnly} (browser only)`); n--; continue; }
 			const svg = await renderSpec(spec, datasets);
 			const marks = (svg.match(/<(path|rect|circle|text|line)\b/g) || []).length;
 			if (marks < 3) throw new Error(`rendered almost nothing (${marks} elements)`);

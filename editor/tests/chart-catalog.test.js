@@ -49,6 +49,7 @@ test('catalogue shape: unique ids, real groups, complete definitions', () => {
 test('every chart type renders from its sample, identically on a second run', async () => {
 	for (const t of C.TYPES) {
 		const spec = C.sampleSpec(t);
+		if (t.browserOnly) continue; // needs a canvas, which Node lacks; md-doc's tests and the browser check cover it
 		const a = await renderSpec(spec, datasets);
 		assert.ok((a.match(/<(path|rect|circle|text|line)\b/g) || []).length >= 3, `${t.id} drew almost nothing`);
 		// Vega numbers clip paths and gradients from a global counter, so ignore those ids.
@@ -79,6 +80,7 @@ test('every option of every chart type builds and renders in each state', async 
 				const st = C.sampleState(t);
 				st.opts = { [o.key || id]: v };
 				const spec = C.buildSpec(st);
+				if (t.browserOnly) continue;
 				const svg = await renderSpec(spec, datasets);
 				assert.ok(svg.length > 200, `${t.id} with ${id}=${v}`);
 				variants++;
@@ -110,16 +112,13 @@ test('inferType', () => {
 	assert.equal(C.inferType(['Jan', '2']), 'nominal');
 });
 
-test('hierarchy input: duplicate names, loops and several roots are handled', () => {
-	const t = C.chartType('treemap');
-	const base = C.sampleState(t);
-	const dup = { ...base, table: { columns: ['Name', 'Parent', 'Size'], rows: [['a', '', ''], ['b', 'a', '1'], ['b', 'a', '2']] }, types: { Name: 'nominal', Parent: 'nominal', Size: 'quantitative' } };
-	assert.throws(() => C.buildSpec(dup), /appears twice/);
-	const loop = { ...dup, table: { columns: ['Name', 'Parent', 'Size'], rows: [['a', 'b', ''], ['b', 'a', '']] } };
-	assert.throws(() => C.buildSpec(loop), /own ancestor/);
-	const forest = { ...dup, table: { columns: ['Name', 'Parent', 'Size'], rows: [['x', '', '3'], ['y', '', '4']] } };
-	const spec = C.buildSpec(forest);
-	assert.ok(spec.data[0].values.some((n) => n.parent === null && n.name === 'All'), 'several roots get a synthetic All');
+test('hierarchy input: duplicate ids, several roots and missing parents get a readable message', () => {
+	const base = C.sampleState(C.chartType('treemap'));
+	const withRows = (rows) => ({ ...base, table: { columns: ['Id', 'Name', 'Parent', 'Size'], rows } });
+	assert.throws(() => C.buildSpec(withRows([['1', 'a', '', ''], ['2', 'b', '1', '1'], ['2', 'c', '1', '2']])), /appears twice/);
+	assert.throws(() => C.buildSpec(withRows([['1', 'a', '', ''], ['2', 'b', '', '1']])), /exactly one root/);
+	assert.throws(() => C.buildSpec(withRows([['1', 'a', '9', ''], ['2', 'b', '1', '1']])), /No row is the root|not the id/);
+	assert.throws(() => C.buildSpec(withRows([['1', 'a', '', ''], ['2', 'b', '7', '1']])), /not the id of any row/);
 });
 
 test('maps: names, ISO codes and FIPS match; unknowns are reported, not drawn', () => {
@@ -200,4 +199,20 @@ test('a block changed by hand is flagged; a block the wizard did not write is re
 
 test('Venn, pictogram and contour plots are in the catalogue', () => {
 	for (const id of ['venn', 'pictogram', 'contour']) assert.ok(C.TYPES.some((t) => t.id === id), id);
+});
+
+test('no template reuses an input field name for a value it computes (unless the data takes the example’s names)', () => {
+	const produced = (n, acc = new Set()) => {
+		if (Array.isArray(n)) n.forEach((x) => produced(x, acc));
+		else if (n && typeof n === 'object') for (const [k, v] of Object.entries(n)) { if (k === 'as') [].concat(v).forEach((x) => typeof x === 'string' && acc.add(x)); produced(v, acc); }
+		return acc;
+	};
+	for (const t of C.TYPES.filter((x) => x.templates)) {
+		for (const tp of t.templates) {
+			const spec = JSON.parse(JSON.stringify(C.TEMPLATES[tp.key].spec));
+			for (const e of tp.edits || []) e.apply(spec, { records: [], f: () => 'x', list: () => [] });
+			const clash = Object.values(tp.fields).filter((f) => produced(spec).has(f));
+			assert.ok(!clash.length || tp.rename === 'data', `${t.id}/${tp.key}: ${clash} is also computed by the spec; set rename: 'data'`);
+		}
+	}
 });
