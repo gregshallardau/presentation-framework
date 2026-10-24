@@ -407,10 +407,10 @@ custom properties (`--primary`, `--secondary`, `--fg`, `--muted`, `--line`, `--b
 - **Don't hand-write a chart: use the wizard.** In deck studio, **Insert → Chart…** is a step-by-step
   builder (type, data, customize, with a live preview) that inserts the right block for the file you
   are in: a ```` ```chart ```` block in a `.md` slide, a `<deck-chart-vega>` in an `.html` slide. It
-  offers **84 chart types** in 11 groups (bars and comparisons, change over time, distributions,
+  offers **87 chart types** in 11 groups (bars and comparisons, change over time, distributions,
   relationships, parts of a whole, heatmaps, KPIs, hierarchies, flows and networks, word clouds and
   maps), each shown as a thumbnail drawn from its own sample data; search by name. Maps use bundled
-  basemaps, so they work offline. The full list is in md-doc-pipeline's handbook (`#markdown-charts-catalogue`).
+  basemaps, so they work offline. To change a chart later, put the cursor in its block and use **Insert → Edit chart at cursor**: it reopens on the same chart type with the data and options restored and replaces the block in place (charts written by hand cannot be reopened). The full list is in md-doc-pipeline's handbook (`#markdown-charts-catalogue`).
 - **Data chart (Vega-Lite or Vega)** - in a `.md` slide, a fenced ```` ```chart ```` block holding the
   spec as YAML or JSON (the same block md-doc-pipeline documents use; `vega-lite` / `vega` fences work too,
   options after the language become attributes: ```` ```chart ratio="16 / 9" ````). In an `.html` slide,

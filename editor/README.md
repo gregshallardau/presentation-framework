@@ -360,11 +360,19 @@ prints a folder of step-by-step screenshots.
 ## Chart wizard
 
 **Insert → Chart…** opens a four-step builder (type, data, customize, insert) for Vega-Lite and Vega
-charts: 84 chart types in 11 groups, with a searchable picker whose thumbnails are drawn from each
+charts: 87 chart types in 11 groups, with a searchable picker whose thumbnails are drawn from each
 chart's own sample data. Paste a table or edit the sample; pick columns and options; it inserts a
 ```` ```chart ```` block in a `.md` slide or a `<deck-chart-vega>` in an `.html` slide, at the cursor.
 The preview uses the Vega packages from `node_modules` (`/__editor/vendor/vega/`) and the bundled
 basemaps in `src/lib/data/` (`/__editor/vendor/vega-datasets/`); nothing is fetched.
+
+**Insert → Edit chart at cursor** reopens the wizard on the chart block the cursor is in (a ```` ```chart ````
+fence in a `.md` slide, a `<deck-chart-vega>` in an `.html` slide), locked to that chart's own type, with
+its data, columns and options restored; **Update chart** replaces the block in place. The settings are
+saved with the block: a `# chart-wizard: {…}` comment line in the fence, a `data-wizard` attribute on the
+element. A hash of what the wizard wrote lets it warn when the block was changed by hand. A chart written
+by hand has no saved settings, so it cannot be reopened. A host supplies `getSource()`,
+`replaceRange(start, end, code)` and `notify(message)` to `ChartWizard.edit(host)`.
 
 The wizard is the shared files `static/chart-*.js`: `chart-core.js` (data parsing, registries, YAML and
 JSON output), one `chart-types-*.js` module per chart family, `chart-geo-data.js` (country and state

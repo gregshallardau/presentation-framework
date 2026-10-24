@@ -146,3 +146,57 @@ test('built-in datasets resolve locally and unknown ones fail loudly', async () 
 	assert.deepEqual(plain(C.datasetNames(out)), []);
 	assert.ok(JSON.stringify(out).includes('"Topology"'));
 });
+
+test('every chart reopens from its own block, as that type, in both block formats', () => {
+	for (const t of C.TYPES) {
+		const st = C.sampleState(t);
+		st.userTyped = {};
+		const spec = C.buildSpec(st);
+		for (const format of ['yaml-fence', 'deck-element']) {
+			const code = C.codeFor(format, spec, 'A label', st);
+			const doc = `Intro\n\n${code}\nOutro\n`;
+			const hit = C.findBlock(doc, doc.indexOf('Intro') + 12, format);
+			assert.ok(hit, `${t.id}/${format}: block not found`);
+			assert.equal(hit.text, code, `${t.id}/${format}: the block is the whole thing, nothing around it`);
+			assert.equal(C.findBlock(doc, 2, format), null, `${t.id}/${format}: the cursor outside a block finds none`);
+			const read = C.readBlock(hit.text, format);
+			assert.ok(!read.error, `${t.id}/${format}: ${read.error}`);
+			assert.equal(read.edited, false, `${t.id}/${format}: untouched block reads as edited`);
+			assert.equal(read.state.type, t.id);
+			assert.deepEqual(plain(read.state.table), plain(st.table));
+			assert.deepEqual(plain(read.state.map), plain(st.map));
+			// the restored state rebuilds the very same chart
+			assert.deepEqual(plain(C.buildSpec({ ...read.state, opts: read.state.opts })), plain(spec), `${t.id}/${format}: rebuilt chart differs`);
+		}
+	}
+});
+
+test('the settings comment does not change how the chart block parses', () => {
+	const st = C.sampleState(C.chartType('bar'));
+	const spec = C.buildSpec(st);
+	const code = C.codeFor('yaml-fence', spec, '', st);
+	assert.match(code, /^```chart\n# chart-wizard: \{/);
+	assert.deepEqual(plain(YAML.parse(code.split('\n').slice(1, -2).join('\n'))), plain(spec));
+});
+
+test('a block changed by hand is flagged; a block the wizard did not write is refused', () => {
+	const st = C.sampleState(C.chartType('line'));
+	for (const format of ['yaml-fence', 'deck-element']) {
+		const code = C.codeFor(format, C.buildSpec(st), '', st);
+		const tweaked = format === 'yaml-fence' ? code.replace('mark:', 'mark_:') : code.replace('"mark"', '"mark_"');
+		assert.notEqual(tweaked, code);
+		assert.equal(C.readBlock(tweaked, format).edited, true, format);
+		// re-indenting alone is not an edit
+		assert.equal(C.readBlock(code.replace(/\n {2}/g, '\n    '), format).edited, false, format);
+	}
+	assert.match(C.readBlock('```chart\nmark: bar\n```\n', 'yaml-fence').error, /not made by the wizard/);
+	assert.match(C.readBlock('<deck-chart-vega>\n<script type="application/json">{}</script>\n</deck-chart-vega>', 'deck-element').error, /not made by the wizard/);
+	const bad = C.codeFor('yaml-fence', C.buildSpec(st), '', st).replace(/"t":"line"/, '"t":"nope"');
+	assert.match(C.readBlock(bad, 'yaml-fence').error, /does not have/);
+	const gone = C.codeFor('yaml-fence', C.buildSpec(st), '', st).replace(/"m":\{[^}]*\}/, '"m":{"x":"missing_col"}');
+	assert.match(C.readBlock(gone, 'yaml-fence').error, /no longer there/);
+});
+
+test('Venn, pictogram and contour plots are in the catalogue', () => {
+	for (const id of ['venn', 'pictogram', 'contour']) assert.ok(C.TYPES.some((t) => t.id === id), id);
+});
