@@ -16,7 +16,7 @@ import * as vl from 'vega-lite';
 
 const STATIC = new URL('../editor/static/', import.meta.url);
 export function loadCatalog() {
-	const files = readdirSync(STATIC).filter((f) => /^chart-(core|geo-data|types-.*)\.js$/.test(f)).sort((a, b) => (a.includes('core') ? -1 : b.includes('core') ? 1 : a.localeCompare(b)));
+	const files = readdirSync(STATIC).filter((f) => /^chart-(core|templates|geo-data|types-.*)\.js$/.test(f)).sort((a, b) => { const rank = (f) => (f.includes('core') ? 0 : f.includes('templates') ? 1 : f.includes('upstream') ? 3 : 2); return rank(a) - rank(b) || a.localeCompare(b); });
 	const ctx = { console };
 	ctx.window = ctx;
 	ctx.globalThis = ctx;
