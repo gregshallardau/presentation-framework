@@ -30,10 +30,33 @@ Demo: `slides/090-camera-demo.html`.
 | `#chart 1.5x` | fits it, then pushes in a further 1.5x (it will crop a wide element) |
 | `25% 30% 2x` | the view centred 25% across and 30% down the slide, at 2x |
 | `25% 30%` | the same, at the default point zoom (2x) |
+| `revealed` | everything shown so far: the camera follows the reveal (see below) |
+| `revealed .board` | the same, looking only inside `.board` (any selector) |
 
 **Zoom is magnification.** `1x` is the whole slide, `2x` shows half its width, `4x` a quarter.
 The camera never shows beyond the slide edge: a position near a corner is nudged inward so the
 frame stays on the slide.
+
+### `revealed`: the camera follows the reveal
+
+Put it on the section and the camera is on for every step, with no per-step cues:
+
+```html
+<section data-camera="revealed .board" data-camera-max-zoom="2">
+  <svg> <g class="board"> ...the whole board, drawn once... </g> </svg>
+</section>
+```
+
+It opens tight on whatever is already showing and, on each press, widens only as far as
+the newly shown fragment forces it to. Stepping back retraces the same views. It counts
+text, SVG shapes, images, `<deck-*>` components and boxes with their own background or
+border, and skips fragments that are not on screen yet, following Reveal's own rules
+(`fade-out` is on screen until its step; `fade-in-then-out` and `current-visible` only
+while current). `data-camera-max-zoom` stops it zooming in past that magnification on a
+sparse start (default 4); `revealed 1.2x` pushes in a further 20%.
+
+You can still mix: a fragment with its own cue (`#chart`, `25% 30% 2x`) takes over from
+that step, and a later `revealed` hands the camera back to the reveal.
 
 ## On the section
 
@@ -42,6 +65,7 @@ frame stays on the slide.
 | `data-camera` | turns the camera on. Its value is the **starting view**: empty or `home` by default, or any target above |
 | `data-camera-free` | allow the camera past the slide edges (no clamping) |
 | `data-camera-pad="120"` | air around a fitted element in slide px (default 60) |
+| `data-camera-max-zoom="2"` | the most an element or `revealed` fit will push in (default 4) |
 
 ## On a cue fragment
 

@@ -180,7 +180,9 @@ the section. Then aim it by clicking:
 - The row lists *Start* and every step with its target (or *holds*, when the camera
   keeps the previous framing). Click one to show the slide at that step. The field
   edits the target as text (`#id`, `25% 30% 2x`, `home`); **Home** frames the whole
-  slide; **Clear** removes the step's move; **+ Camera step** adds a step that only
+  slide; **Revealed** frames everything shown so far, so the camera follows the
+  reveal as each step adds more (a start view of `revealed .board` does it for the
+  whole slide); **Clear** removes the step's move; **+ Camera step** adds a step that only
   moves the camera, starting from the framing on screen.
 
 What gets written is ordinary markup: `data-camera` on a fragment, an

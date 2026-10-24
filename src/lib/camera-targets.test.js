@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-	parseTarget, homeView, pointView, magnify, clampView, pickCue, sameView, DEFAULT_POINT_ZOOM,
+	parseTarget, homeView, pointView, magnify, clampView, pickCue, sameView, fragmentShown, DEFAULT_POINT_ZOOM,
 } from './camera-targets.js';
 
 test('parseTarget: home and empty', () => {
@@ -63,4 +63,38 @@ test('sameView', () => {
 	assert.equal(sameView([1, 2, 3], [1.2, 2, 3.1]), true);
 	assert.equal(sameView([1, 2, 3], [2, 2, 3]), false);
 	assert.equal(sameView(null, [1, 2, 3]), false);
+});
+
+test('parseTarget: revealed, with an optional scope and zoom', () => {
+	assert.deepEqual(parseTarget('revealed'), { kind: 'revealed', scope: '', zoom: 1 });
+	assert.deepEqual(parseTarget('  Revealed  '), { kind: 'revealed', scope: '', zoom: 1 });
+	assert.deepEqual(parseTarget('revealed .board'), { kind: 'revealed', scope: '.board', zoom: 1 });
+	assert.deepEqual(parseTarget('revealed #a > .b 1.2x'), { kind: 'revealed', scope: '#a > .b', zoom: 1.2 });
+	assert.deepEqual(parseTarget('revealed 2x'), { kind: 'revealed', scope: '', zoom: 2 });
+	// only the bare word: an id or a longer name is still an element
+	assert.equal(parseTarget('#revealed').kind, 'element');
+	assert.equal(parseTarget('revealed-things').kind, 'element');
+});
+
+test('fragmentShown follows reveal.css', () => {
+	// the default: shown once its step has come
+	assert.equal(fragmentShown(['fragment']), false);
+	assert.equal(fragmentShown(['fragment', 'visible']), true);
+	assert.equal(fragmentShown(['fragment', 'fade-up', 'visible']), true);
+	// there from the start
+	for (const e of ['grow', 'shrink', 'strike', 'semi-fade-out', 'highlight-red', 'highlight-current-blue'])
+		assert.equal(fragmentShown(['fragment', e]), true, e);
+	// fade-out: there until its step
+	assert.equal(fragmentShown(['fragment', 'fade-out']), true);
+	assert.equal(fragmentShown(['fragment', 'fade-out', 'visible']), false);
+	// fade-in-then-out / current-visible: only while it is the current step
+	assert.equal(fragmentShown(['fragment', 'fade-in-then-out']), false);
+	assert.equal(fragmentShown(['fragment', 'fade-in-then-out', 'visible', 'current-fragment']), true);
+	assert.equal(fragmentShown(['fragment', 'fade-in-then-out', 'visible']), false);
+	assert.equal(fragmentShown(['fragment', 'current-visible', 'visible']), false);
+	// fade-in-then-semi-out: stays faintly after its step
+	assert.equal(fragmentShown(['fragment', 'fade-in-then-semi-out', 'visible']), true);
+	assert.equal(fragmentShown(['fragment', 'fade-in-then-semi-out']), false);
+	// disabled fragments are not part of the show
+	assert.equal(fragmentShown(['fragment', 'visible', 'disabled']), false);
 });

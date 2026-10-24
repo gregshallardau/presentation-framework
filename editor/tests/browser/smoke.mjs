@@ -589,6 +589,12 @@ try {
 			() => frameEval(`w.document.querySelector('#camera > .camera-world').style.transform !== ''`),
 			'the camera moved'
 		);
+
+		// Revealed: this step's camera follows what is on screen
+		await page.click('.tl-seg-button:has-text("Director view")');
+		await aimable();
+		await page.click('.tl-camera >> text=Revealed');
+		await until(async () => /data-camera="revealed"/.test(await model()), 'revealed cue written');
 	});
 
 	await step('build the deck', async () => {

@@ -25,11 +25,11 @@
  */
 import { makeCamera, fitView } from '@/lib/camera.js';
 import {
-	parseTarget, homeView, pointView, magnify, clampView, pickCue, sameView,
+	parseTarget, homeView, pointView, magnify, clampView, pickCue, sameView, fragmentShown,
 } from '@/lib/camera-targets.js';
 
 const SELECTOR = 'section[data-camera]:not(:has(> section))';
-const MAX_ZOOM = 4; // element fits never push in past this; an explicit `Nx` can
+const MAX_ZOOM = 4; // element fits never push in past this (data-camera-max-zoom); an explicit `Nx` can
 const PAD = 60; // slide px of air around a fitted element
 const MIN_MS = 900; // camera moves read better a touch slower than a UI transition
 
@@ -184,6 +184,8 @@ function resolve(target, section, world, width, height) {
 	if (target.kind === 'home') return homeView(width, height);
 	if (target.kind === 'point') return pointView(target, width, height);
 
+	if (target.kind === 'revealed') return fitRevealed(target, section, world, width, height);
+
 	let el = null;
 	try {
 		el = world.querySelector(target.selector);
@@ -201,14 +203,88 @@ function resolve(target, section, world, width, height) {
 /** The view that frames an element, then pushes in a further `zoom`. */
 function fitElement(el, zoom, section, world, width, height) {
 	const rect = rectOf(world, el);
-	if (!rect) return null;
+	return rect ? fitRects([rect], zoom, section, width, height) : null;
+}
+
+/** The tightest view that holds these slide-px rects (with air around), then a further `zoom`. */
+function fitRects(rects, zoom, section, width, height) {
 	const pad = Number(section.dataset.cameraPad);
-	const fit = fitView([rect], {
+	const max = Number(section.dataset.cameraMaxZoom);
+	const fit = fitView(rects, {
 		pad: Number.isFinite(pad) ? pad : PAD,
 		aspect: width / height,
-		minW: width / MAX_ZOOM,
+		minW: width / (max > 0 ? max : MAX_ZOOM),
 	});
 	return magnify(fit, zoom);
+}
+
+/**
+ * `revealed`: the tightest view around everything on screen so far inside the
+ * scope (the whole slide by default), so the camera widens only as much as the
+ * next fragment forces it to. null while nothing is shown.
+ */
+function fitRevealed(target, section, world, width, height) {
+	let roots;
+	try {
+		roots = target.scope ? [...world.querySelectorAll(target.scope)] : [world.querySelector('.camera-flow') || world];
+	} catch {
+		console.warn(`[slide-camera] "${target.scope}" is not a valid selector`);
+		return null;
+	}
+	if (!roots.length) {
+		console.warn(`[slide-camera] no element matches "${target.scope}" on #${section.id || 'slide'}`);
+		return null;
+	}
+	const found = [];
+	for (const root of roots) collectShown(root, found);
+	const rects = found.map((r) => slideRect(world, r)).filter(Boolean);
+	return rects.length ? fitRects(rects, target.zoom, section, width, height) : null;
+}
+
+// never part of what the audience sees
+const NOT_PAINTED = new Set(['SCRIPT', 'STYLE', 'ASIDE', 'TEMPLATE', 'NOSCRIPT', 'DEFS', 'TITLE', 'DESC', 'MARKER', 'SYMBOL', 'CLIPPATH', 'MASK']);
+// painted whole, never looked inside: SVG shapes and replaced elements
+const SHAPES = new Set(['CIRCLE', 'ELLIPSE', 'LINE', 'PATH', 'POLYGON', 'POLYLINE', 'RECT', 'IMAGE', 'USE']);
+const REPLACED = new Set(['IMG', 'VIDEO', 'CANVAS', 'IFRAME', 'OBJECT', 'EMBED', 'PICTURE', 'HR', 'INPUT', 'METER', 'PROGRESS']);
+
+/**
+ * Pushes the viewport rects of what is shown under `root`: text, shapes,
+ * images and `<deck-*>` components, skipping fragments that are not on screen.
+ * An element with its own background or border counts too, unless a hidden
+ * fragment sits inside it (its box would then frame the hidden part).
+ * Returns true if anything hidden was skipped under `root`.
+ */
+function collectShown(root, out) {
+	let skipped = false;
+	for (const node of root.childNodes) {
+		if (node.nodeType === Node.TEXT_NODE) {
+			if (!node.nodeValue.trim()) continue;
+			const range = document.createRange();
+			range.selectNodeContents(node);
+			out.push(range.getBoundingClientRect());
+			continue;
+		}
+		if (node.nodeType !== Node.ELEMENT_NODE) continue;
+		if (NOT_PAINTED.has(node.tagName.toUpperCase())) continue;
+		if (node.classList.contains('fragment') && !fragmentShown(node.classList)) {
+			skipped = true;
+			continue;
+		}
+		const style = getComputedStyle(node);
+		if (style.display === 'none') continue;
+
+		const tag = node.tagName.toUpperCase();
+		if (SHAPES.has(tag) || REPLACED.has(tag) || tag.includes('-')) {
+			out.push(node.getBoundingClientRect());
+			continue;
+		}
+		const before = out.length;
+		const hiddenInside = collectShown(node, out);
+		skipped ||= hiddenInside;
+		const boxed = style.backgroundColor !== 'rgba(0, 0, 0, 0)' || parseFloat(style.borderTopWidth) > 0;
+		if (boxed && !hiddenInside && !(node instanceof SVGElement) && out.length > before) out.push(node.getBoundingClientRect());
+	}
+	return skipped;
 }
 
 /**
@@ -216,8 +292,11 @@ function fitElement(el, zoom, section, world, width, height) {
  * (Reveal's scale times the camera's), so it is right mid-move too.
  */
 function rectOf(world, el) {
+	return slideRect(world, el.getBoundingClientRect());
+}
+
+function slideRect(world, t) {
 	const w = world.getBoundingClientRect();
-	const t = el.getBoundingClientRect();
 	const scale = w.width / world.offsetWidth;
 	if (!scale || (!t.width && !t.height)) return null;
 	return { x: (t.left - w.left) / scale, y: (t.top - w.top) / scale, w: t.width / scale, h: t.height / scale };

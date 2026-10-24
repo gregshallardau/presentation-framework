@@ -467,7 +467,7 @@ export function createCameraTools({ host, api, el, icon, toast }) {
 
 		const target = el('input', 'input tl-cam-target');
 		target.dataset.role = 'target';
-		target.placeholder = '#id  ·  25% 30% 2x  ·  home';
+		target.placeholder = '#id  ·  25% 30% 2x  ·  revealed  ·  home';
 		target.setAttribute('aria-label', 'Camera target for this step');
 		target.title = 'The camera target for the step on screen. Enter to apply.';
 		target.onkeydown = (event) => {
@@ -483,6 +483,9 @@ export function createCameraTools({ host, api, el, icon, toast }) {
 		const home = el('button', 'button ghost small', 'Home');
 		home.title = 'Frame the whole slide at this step';
 		home.onclick = api.attempt(() => writeCue('home'));
+		const revealed = el('button', 'button ghost small', 'Revealed');
+		revealed.title = 'Frame everything shown so far: the camera follows the reveal, widening as each step adds more';
+		revealed.onclick = api.attempt(() => writeCue('revealed'));
 		const clear = el('button', 'button ghost small', 'Clear');
 		clear.title = 'Remove this step’s camera move (the camera holds the previous framing)';
 		clear.onclick = api.attempt(clearCue);
@@ -490,7 +493,7 @@ export function createCameraTools({ host, api, el, icon, toast }) {
 		add.append(icon('plus'), document.createTextNode(' Camera step'));
 		add.title = 'Add a step that only moves the camera';
 		add.onclick = api.attempt(addCameraStep);
-		lane.append(target, home, clear, add);
+		lane.append(target, home, revealed, clear, add);
 
 		lane.append(
 			el('span', 'tl-note', 'Click an element, or drag a region, on the slide to aim the camera at this step.')

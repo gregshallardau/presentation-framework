@@ -362,6 +362,9 @@ flies it there when it is shown. Full guide: [`camera.md`](./camera.md).
 </section>
 ```
 
+`<section data-camera="revealed .board">` instead keeps the camera on everything shown so far,
+widening as each fragment appears, with no per-step cues.
+
 ---
 
 ## Slide backgrounds & transitions

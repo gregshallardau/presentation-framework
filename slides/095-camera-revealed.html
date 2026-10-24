@@ -1,0 +1,67 @@
+<section id="camera-revealed" data-slug="camera-revealed" data-camera="revealed #board" data-camera-max-zoom="2" data-transition="none">
+	<style>
+		#camera-revealed svg { display: block; width: 100%; height: auto; }
+		#camera-revealed marker path { fill: var(--muted); }
+		#camera-revealed .dot { fill: var(--primary); }
+		#camera-revealed .capital .dot { fill: var(--success); }
+		#camera-revealed .arrow { stroke: var(--primary); stroke-width: 3; }
+		#camera-revealed .capital .arrow { stroke: var(--success); }
+		#camera-revealed .label { fill: var(--fg); font-family: var(--font-body); font-size: 26px; text-anchor: middle; }
+		#camera-revealed .socket { fill: none; stroke: var(--muted); stroke-width: 3; stroke-dasharray: 5 5; }
+		#camera-revealed .qmark { fill: var(--muted); font-family: var(--font-heading); font-size: 30px; font-weight: 700; text-anchor: middle; }
+	</style>
+	<h2>The camera follows the reveal</h2>
+	<!-- One attribute on the section: `revealed #board` frames everything shown so far
+	     inside #board. It opens tight on "girl" and widens only as far as each
+	     press forces it to. No per-step cues. Guide: docs/camera.md -->
+	<svg viewBox="0 0 1600 900" role="img" aria-label="Word pairs appearing one at a time">
+		<defs>
+			<marker id="cr-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z"/></marker>
+		</defs>
+		<g id="board">
+			<circle class="dot" cx="180" cy="170" r="10"/>
+			<text class="label" x="180" y="204">girl</text>
+
+			<g class="fragment" data-fragment-index="0">
+				<line class="arrow" x1="194" y1="170" x2="366" y2="170" marker-end="url(#cr-arrow)"/>
+				<circle class="dot" cx="380" cy="170" r="10"/>
+				<text class="label" x="380" y="204">boy</text>
+			</g>
+
+			<g class="fragment" data-fragment-index="1">
+				<circle class="dot" cx="180" cy="300" r="10"/>
+				<text class="label" x="180" y="334">sister</text>
+				<line class="arrow" x1="194" y1="300" x2="366" y2="300" marker-end="url(#cr-arrow)"/>
+			</g>
+			<g class="fragment fade-in-then-out" data-fragment-index="1">
+				<circle class="socket" cx="380" cy="300" r="10"/>
+				<text class="qmark" x="380" y="334">?</text>
+			</g>
+			<g class="fragment" data-fragment-index="2">
+				<circle class="dot" cx="380" cy="300" r="10"/>
+				<text class="label" x="380" y="334">brother</text>
+			</g>
+
+			<g class="capital">
+				<g class="fragment" data-fragment-index="3">
+					<circle class="dot" cx="890" cy="500" r="10"/>
+					<text class="label" x="890" y="534">France</text>
+					<line class="arrow" x1="903" y1="493" x2="1027" y2="417" marker-end="url(#cr-arrow)"/>
+				</g>
+				<g class="fragment fade-in-then-out" data-fragment-index="3">
+					<circle class="socket" cx="1040" cy="410" r="10"/>
+					<text class="qmark" x="1040" y="444">?</text>
+				</g>
+				<g class="fragment" data-fragment-index="4">
+					<circle class="dot" cx="1040" cy="410" r="10"/>
+					<text class="label" x="1040" y="444">Paris</text>
+				</g>
+			</g>
+		</g>
+	</svg>
+	<aside class="notes">
+		Opens close on "girl". Each press adds a word and the camera widens only as
+		far as it must to hold everything shown so far. The "?" counts while it is
+		on screen. Back-stepping retraces the same views.
+	</aside>
+</section>
