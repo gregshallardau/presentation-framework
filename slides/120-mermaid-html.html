@@ -1,0 +1,15 @@
+<section id="mermaid-html" data-slug="mermaid-html">
+	<h2>Diagram on an HTML slide</h2>
+	<deck-mermaid label="Request flow">
+		<script type="text/mermaid">
+sequenceDiagram
+    participant U as User
+    participant D as Deck
+    participant M as Mermaid
+    U->>D: open slide
+    D->>M: render(source)
+    M-->>D: SVG
+    D-->>U: diagram
+		</script>
+	</deck-mermaid>
+</section>

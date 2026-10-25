@@ -17,6 +17,24 @@ describe('editor API', () => {
 		fx?.cleanup();
 	});
 
+	describe('charts', () => {
+		it('parses a chart block (YAML or JSON) so the wizard can read it back', async () => {
+			const yaml = await ed.api('/api/charts/parse', { method: 'POST', body: { source: 'mark: bar\ndata:\n  values: [{a: 1}]\n' } });
+			assert.equal(yaml.status, 200);
+			assert.deepEqual(yaml.body.spec, { mark: 'bar', data: { values: [{ a: 1 }] } });
+			const json = await ed.api('/api/charts/parse', { method: 'POST', body: { source: '{"mark": "point"}' } });
+			assert.deepEqual(json.body.spec, { mark: 'point' });
+		});
+
+		it('refuses a block that is not a spec', async () => {
+			for (const source of ['- 1\n- 2', 'just text', 'a: [unclosed']) {
+				const { status, body } = await ed.api('/api/charts/parse', { method: 'POST', body: { source } });
+				assert.equal(status, 400, source);
+				assert.match(body.detail, /chart spec/i);
+			}
+		});
+	});
+
 	describe('security', () => {
 		it('rejects writes without the session token', async () => {
 			const { status, body } = await ed.api('/api/file', {

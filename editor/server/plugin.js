@@ -17,6 +17,7 @@
  * `build:deck`.
  */
 import { randomBytes } from 'node:crypto';
+import YAML from 'yaml';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -137,6 +138,16 @@ export default function deckEditor({ overlay, allowedHosts = [] } = {}) {
 				throw new HttpError(400, `Unknown file action "${action}"`);
 			});
 		},
+		// A chart block's YAML (or JSON) as a spec, so the chart wizard can read an existing chart back.
+		'POST /api/charts/parse': ({ body }) => {
+			try {
+				const spec = YAML.parse(String(body.source ?? ''));
+				if (!spec || typeof spec !== 'object' || Array.isArray(spec)) throw new Error('a chart spec must be a mapping (Vega-Lite or Vega)');
+				return { spec };
+			} catch (error) {
+				throw new HttpError(400, `Invalid chart spec: ${String(error.message).split('\n')[0]}`);
+			}
+		},
 		'GET /api/changes': async () => ({ signature: await changeSignature(root) }),
 		'GET /api/search': async ({ query }) => ({ results: await search(root, query.get('q')) }),
 		'POST /api/deck': ({ body }) => deckModel(root, body.buffers || {}),
@@ -217,6 +228,20 @@ export default function deckEditor({ overlay, allowedHosts = [] } = {}) {
 			return serveStatic(res, monaco, decodeURIComponent(sub.slice('/vendor/monaco/'.length)), {
 				cache: true,
 			});
+		}
+		if (sub.startsWith('/vendor/vega-datasets/')) {
+			// Built-in basemaps for the chart wizard's preview (the same files the deck component uses).
+			const name = decodeURIComponent(sub.slice('/vendor/vega-datasets/'.length));
+			if (!/^(world-110m|us-10m)\.json$/.test(name)) throw new HttpError(404, `No dataset ${name}`);
+			return serveStatic(res, path.join(root, 'src', 'lib', 'data') + path.sep, name, { cache: true });
+		}
+		if (sub.startsWith('/vendor/vega/')) {
+			// The chart wizard's live preview: the same Vega packages the deck's <deck-chart-vega> uses.
+			const file = decodeURIComponent(sub.slice('/vendor/vega/'.length));
+			const packages = { 'vega.min.js': 'vega', 'vega-lite.min.js': 'vega-lite', 'vega-embed.min.js': 'vega-embed' };
+			if (!packages[file]) throw new HttpError(404, `No vendor file ${file}`);
+			const build = path.join(root, 'node_modules', packages[file], 'build') + path.sep;
+			return serveStatic(res, build, file, { cache: true });
 		}
 		return serveStatic(res, STATIC_DIR, decodeURIComponent(sub.slice(1)));
 	}

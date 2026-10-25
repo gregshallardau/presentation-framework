@@ -416,6 +416,8 @@
 							$('monaco'),
 							sourceEditorOptions({ value: '', language: 'deck-markdown' })
 						);
+						// Right-click inside a chart block: Edit chart…
+						window.ChartWizard?.bindEditor(state.editor, () => (current() ? chartHost() : null));
 						state.editor.onDidChangeModelContent(() => {
 							if (!state.switching) changed(state.editor.getValue());
 						});
@@ -1319,6 +1321,13 @@
 				buffer: bufferText,
 				setContent,
 				frameCurrent: () => state.frameVersion === state.editVersion,
+				// A chart right-clicked in the preview: reopen the wizard on the block holding that chart's spec.
+				editChart: (chartEl) => {
+					const inline = chartEl.querySelector('script[type="application/json"]');
+					let spec;
+					try { spec = JSON.parse(chartEl.getAttribute('spec') || (inline && inline.textContent)); } catch { return toast('That chart’s spec could not be read.', true); }
+					window.ChartWizard.edit(chartHost(), { spec });
+				},
 				refreshPreview: () => schedulePreview(0),
 				openAt: (path, line) => openFile(path, line, { follow: false }),
 				quietSlide,
@@ -2080,6 +2089,8 @@
 				)
 			);
 		body.append(
+			option('Chart…', 'A step-by-step Vega-Lite chart builder (bar, line, pie, scatter, heatmap…)', 'component', () => chartWizard()),
+			option('Edit chart at cursor', 'Reopen the wizard on the chart block the cursor is in', 'component', () => editChart()),
 			option('Jump link to a slide', 'Links to #/<slug>', 'link', () => linkMenu()),
 			option('Background colour', 'data-background-color on this slide', 'palette', () =>
 				insertText(
@@ -2090,6 +2101,53 @@
 			)
 		);
 		dialog('Insert', body, [], true);
+	}
+	function chartHost() {
+		const markdown = /\.md$/i.test(state.active || '');
+		return {
+			// .md slides take a ```chart block (the same one md-doc documents use); .html slides a <deck-chart-vega>
+			format: markdown ? 'yaml-fence' : 'deck-element',
+			scriptBase: '/__editor',
+			vendorBase: '/__editor/vendor/vega',
+			datasetBase: '/__editor/vendor/vega-datasets',
+			getConfig: async () => {
+				const mod = await import('/src/lib/vega.js');
+				return mod.vegaConfig({ dark: false, scale: 1, font: 'Inter, Helvetica, Arial, sans-serif', ink: '#0b0c0e', ink2: '#5b616e', line: '#9aa0ac', grid: '#cdd0d6', primary: '#2563eb', secondary: '#3a3f4a' });
+			},
+			onInsert: (code) => insertText('\n' + code),
+			getSource() {
+				if (state.editor) {
+					const model = state.editor.getModel();
+					return { text: model.getValue(), offset: model.getOffsetAt(state.editor.getPosition()) };
+				}
+				return { text: state.fallback.value, offset: state.fallback.selectionStart };
+			},
+			replaceRange(start, end, code) {
+				if (state.editor) {
+					const model = state.editor.getModel();
+					const range = monaco.Range.fromPositions(model.getPositionAt(start), model.getPositionAt(end));
+					state.editor.executeEdits('deck-studio', [{ range, text: code }]);
+					state.editor.focus();
+				} else {
+					state.fallback.setRangeText(code, start, end, 'end');
+					changed(state.fallback.value);
+				}
+			},
+			parseSpec: async (source) => (await api('/api/charts/parse', { method: 'POST', body: JSON.stringify({ source }) })).spec,
+			notify: (message) => toast(message, true),
+		};
+	}
+	function chartWizard() {
+		if (!current()) return toast('Open a slide first.', true);
+		const dlg = $('form-dialog');
+		if (dlg.open) dlg.close();
+		window.ChartWizard.open(chartHost());
+	}
+	function editChart() {
+		if (!current()) return toast('Open a slide first.', true);
+		const dlg = $('form-dialog');
+		if (dlg.open) dlg.close();
+		window.ChartWizard.edit(chartHost());
 	}
 	function linkMenu() {
 		const body = el('div');

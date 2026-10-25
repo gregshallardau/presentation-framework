@@ -356,3 +356,51 @@ npm run test:editor:browser   # drives the editor in Chromium (playwright-core)
 The browser test needs a Chromium for `playwright-core`. Set `CHROMIUM_PATH`
 to its executable, or run `npx playwright-core install chromium` once. It
 prints a folder of step-by-step screenshots.
+
+## Chart wizard
+
+**Insert → Chart…** opens a four-step builder (type, data, customize, insert) for Vega-Lite and Vega
+charts: 86 chart types in 11 groups, with a searchable picker whose thumbnails are drawn from each
+chart's own sample data. Paste a table or edit the sample; pick columns and options; it inserts a
+```` ```chart ```` block in a `.md` slide or a `<deck-chart-vega>` in an `.html` slide, at the cursor.
+The preview uses the Vega packages from `node_modules` (`/__editor/vendor/vega/`) and the bundled
+basemaps in `src/lib/data/` (`/__editor/vendor/vega-datasets/`); nothing is fetched.
+
+**Right-click → Edit chart…** inside a chart block (a ```` ```chart ```` fence in a `.md` slide, a `<deck-chart-vega>`
+in an `.html` slide), **Insert → Edit chart at cursor**, or a right-click on the chart in the preview, reopens the
+wizard on that chart. Nothing is stored in the block: `ChartCatalog.readSpec(spec)` recognises which upstream example
+the spec is (by walking each template beside it and rebuilding; the chart is that type when the rebuild equals the
+block, titles and rows aside), takes the table out of the data and finds the columns that fill the example's fields,
+so a chart pasted from the Vega docs or edited by hand opens the same way. The type is locked while editing, and
+**Update chart** replaces the block in place. YAML is parsed by the editor server (`POST /api/charts/parse`); a host
+supplies `getSource()`, `parseSpec()`, `replaceRange()` and `notify()` to `ChartWizard.edit(host)`.
+
+The wizard is the shared files `static/chart-*.js`: `chart-core.js` (data parsing, registries, the upstream
+fill, YAML and JSON output), `chart-templates.js` (the upstream Vega / Vega-Lite example specs, verbatim,
+**generated** by `node scripts/chart-upstream.mjs` from the lists at the top of that script; `--check` verifies
+it still matches upstream), `chart-types-upstream.js` (the chart types backed by those examples),
+`chart-types-custom.js` (types with no upstream example, written from the nearest example's own marks and
+transforms), `chart-geo-data.js` (country and state lookup tables and name matching) and
+`chart-wizard.js` (the dialog). They are **canonical here**; md-doc-pipeline's studio carries byte-identical
+copies. After editing any of them:
+
+```
+node scripts/chart-manifest.mjs --copy ../md-doc-pipeline/md-doc-web-editor/md_doc_web_editor/static
+```
+
+copies them across and refreshes `tests/chart-wizard.sha256.json` in both repos (a test in each compares
+the files with it).
+
+**How a chart is built.** `ChartCatalog.upstream({ id, roles, templates: [{ key, fields, edits }] })` takes an
+upstream template, puts the user's rows where the example's data was, and renames the example's field names
+to the user's columns. Nothing else may change: anything beyond that is a declared `edit` with its reason
+(`ChartCatalog.EDITS`; `node scripts/chart-docs.mjs` prints them into the handbook). Options exist only where
+upstream has the feature (a variant example, or a documented property). A template that reuses an input field
+name for a value it computes sets `rename: 'data'`, which keeps the spec byte-for-byte and gives the data the
+example's column names instead. `npm run test:editor` renders every type from its sample, checks it is
+deterministic (a type with `random` is exempt: upstream resamples), and checks no template collides with a
+computed field name; md-doc's tests check the handbook lists every type.
+
+- `node scripts/chart-check.mjs [ids…] [--out DIR]` renders every chart type from its sample with the
+  deck's Vega engine and reports failures (`--out` writes the specs for other renderers).
+- `node scripts/chart-docs.mjs` prints the catalogue as Markdown tables for the handbook.

@@ -32,6 +32,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { SLIDE_RE, natSort, parseSlideFilename as parse } from '../scripts/lib/slide-files.js';
+import { transformFences } from './mermaid-fences.js';
+import { transformChartFences } from './chart-fences.js';
 
 const DIR = 'slides';
 const MARKER = '<!-- @slides -->';
@@ -74,7 +76,7 @@ function assemble(root, read = (file) => fs.readFileSync(file, 'utf8')) {
 		const sections = items.map(({ f, meta }) => {
 			const raw = read(path.join(dir, f));
 			return meta.ext === 'md'
-				? renderMd(raw, meta.slug)
+				? renderMd(transformChartFences(transformFences(raw)), meta.slug) // ```mermaid / ```chart -> <deck-*>
 				: injectAttrs(raw.trim(), meta.slug);
 		});
 		out.push(

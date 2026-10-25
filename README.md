@@ -143,3 +143,4 @@ Each reads `docs/framework-conventions.md` first.
 
 Built on [reveal.js](https://revealjs.com) by Hakim El Hattab - MIT licensed
 (`LICENSE`).
+Third-party notices (Vega and Vega-Lite specs, basemap data): [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

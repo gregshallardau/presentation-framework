@@ -397,6 +397,39 @@ not `src/`), listed in `src/components/registry.js` (framework machinery).
 - On a slide: place the tag, pass data through attributes / slots. Never style it
   from the slide.
 
+### Charts and diagrams shared with md-doc-pipeline
+
+Charts and diagrams use the **same source as md-doc-pipeline documents**, so a block copied
+between a document and a slide draws the same thing. Both are themed from the deck's
+custom properties (`--primary`, `--secondary`, `--fg`, `--muted`, `--line`, `--bg`,
+`--font-body`) and follow `[data-theme]`.
+
+- **Don't hand-write a chart: use the wizard.** In deck studio, **Insert → Chart…** is a step-by-step
+  builder (type, data, customize, with a live preview) that inserts the right block for the file you
+  are in: a ```` ```chart ```` block in a `.md` slide, a `<deck-chart-vega>` in an `.html` slide. It
+  offers **86 chart types** in 11 groups (bars and comparisons, change over time, distributions,
+  relationships, parts of a whole, heatmaps, KPIs, hierarchies, flows and networks, word clouds and
+  maps), each shown as a thumbnail drawn from its own sample data; search by name. Maps use bundled
+  basemaps, so they work offline. To change a chart later, right-click it (in the code or on the slide) and choose **Edit chart…**: the wizard reads the block itself, opens on the same chart type with your data and columns filled in, and replaces the block in place. Nothing is stored in the block, so a chart pasted from the Vega docs opens the same way.
+- **Data chart (Vega-Lite or Vega)** - in a `.md` slide, a fenced ```` ```chart ```` block holding the
+  spec as YAML or JSON (the same block md-doc-pipeline documents use; `vega-lite` / `vega` fences work too,
+  options after the language become attributes: ```` ```chart ratio="16 / 9" ````). In an `.html` slide,
+  `<deck-chart-vega>` takes the spec as JSON, inline or in `spec='...'`. It is interactive (tooltips, selections, bound controls); `ratio="16 / 9"` sets the
+  box (default `2 / 1`; do not use `.r-stretch`). `el.view` is the live Vega view.
+  ```html
+  <deck-chart-vega label="Revenue">
+    <script type="application/json">{"data":{"values":[…]},"mark":"line","encoding":{…}}</script>
+  </deck-chart-vega>
+  ```
+- **Diagram (Mermaid)** - in a `.md` slide, a fenced ```` ```mermaid ```` block; in an `.html` slide,
+  `<deck-mermaid><script type="text/mermaid">…</script></deck-mermaid>`. Add `steps` (` ```mermaid steps `
+  or `<deck-mermaid steps>`) to reveal nodes one at a time in source order, each with the edges leading
+  into it (they are Reveal fragments, so overview and PDF export work). `label="…"` sets the accessible
+  name. Drawn in the browser by the real Mermaid library, styled to match md-doc-pipeline's diagrams
+  (same colour recipe, rounded boxes, orthogonal ELK edge routing) and re-themed with `[data-theme]`.
+  Styling is tuned for **flowcharts**; other diagram types (sequence, state, …) get the deck colours but
+  Mermaid's own sizing. Do not use Mermaid for data charts - use `<deck-chart-vega>`.
+
 ---
 
 ## Logo & footer (deck chrome)

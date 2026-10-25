@@ -83,6 +83,7 @@
 		"make:component": "node scripts/make-component.js",
 		"test:editor": "node --test editor/tests/*.test.js",
 		"test:camera": "node --test src/lib/*.test.js",
+		"test:build": "node --test build/*.test.js",
 		"test:editor:browser": "node editor/tests/browser/smoke.mjs"
 	},
 	"author": "Greg Shallard",
@@ -99,10 +100,16 @@
 		"presentation"
 	],
 	"dependencies": {
+		"@mermaid-js/layout-elk": "^1.0.1",
 		"alpinejs": "^3.14.9",
 		"d3": "^7.9.0",
 		"gsap": "^3.13.0",
-		"topojson-client": "^3.1.0"
+		"mermaid": "^12.2.0",
+		"topojson-client": "^3.1.0",
+		"vega": "^6.2.0",
+		"vega-embed": "^7.0.2",
+		"vega-lite": "^6.4.2",
+		"yaml": "^2.9.1"
 	},
 	"devDependencies": {
 		"fitty": "^2.4.2",

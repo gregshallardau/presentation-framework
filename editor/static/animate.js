@@ -477,12 +477,17 @@ export function createAnimator(host) {
 		if (!deck || !probe) return;
 		const state = await probe.autoAnimateState().catch(() => null);
 		const attrs = (await slideAttrs().catch(() => null)) || {};
-		const items = element
-			? [
-					...(await elementItems(element, state)),
-					{ label: 'Slide', items: slideItems(slide, attrs) },
-				]
-			: slideItems(slide, attrs);
+		// A chart in the slide: reopen the chart wizard on its block.
+		const chart = element?.closest?.('deck-chart-vega');
+		const chartItems = chart ? [{ label: 'Edit chart…', run: () => host.editChart(chart) }, { separator: true }] : [];
+		const items = chart
+			? [...chartItems, { label: 'Slide', items: slideItems(slide, attrs) }]
+			: element
+				? [
+						...(await elementItems(element, state)),
+						{ label: 'Slide', items: slideItems(slide, attrs) },
+					]
+				: slideItems(slide, attrs);
 		openMenu(items, { x, y });
 	}
 
