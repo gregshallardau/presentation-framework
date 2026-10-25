@@ -39,8 +39,9 @@ export async function renderSpec(spec, datasets = {}) {
 function inlineDatasets(node, datasets) {
 	if (Array.isArray(node)) return node.forEach((n) => inlineDatasets(n, datasets));
 	if (!node || typeof node !== 'object') return;
-	if (typeof node.url === 'string' && node.url.startsWith('vega-datasets:')) {
-		const name = node.url.slice('vega-datasets:'.length);
+	const bare = typeof node.url === 'string' && /^data\/(world-110m|us-10m)\.json$/.exec(node.url); // upstream's own basemap url
+	if (typeof node.url === 'string' && (node.url.startsWith('vega-datasets:') || bare)) {
+		const name = bare ? bare[1] : node.url.slice('vega-datasets:'.length);
 		node.values = datasets[name] ??= JSON.parse(readFileSync(new URL(`../src/lib/data/${name}.json`, import.meta.url), 'utf8'));
 		delete node.url;
 	}

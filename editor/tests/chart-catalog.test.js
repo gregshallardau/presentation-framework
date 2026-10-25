@@ -226,3 +226,11 @@ test('no template reuses an input field name for a value it computes (unless the
 		}
 	}
 });
+
+test('maps draw their basemap, not just a legend', async () => {
+	const shapes = async (id) => ((await renderSpec(C.sampleSpec(C.chartType(id)), datasets)).match(/<path\b/g) || []).length;
+	assert.ok((await shapes('map-us')) > 100, 'map-us: county shapes');
+	assert.ok((await shapes('map-world')) > 15, 'map-world: the countries that have a value');
+	assert.ok((await shapes('bubble-map-us')) > 40, 'bubble-map-us: state shapes');
+	assert.ok((await shapes('bubble-map-world')) > 100, 'bubble-map-world: country shapes');
+});
