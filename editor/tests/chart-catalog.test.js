@@ -234,3 +234,22 @@ test('maps draw their basemap, not just a legend', async () => {
 	assert.ok((await shapes('bubble-map-us')) > 40, 'bubble-map-us: state shapes');
 	assert.ok((await shapes('bubble-map-world')) > 100, 'bubble-map-world: country shapes');
 });
+
+
+test('customized charts reopen with their options intact', () => {
+	for (const [id, opts] of [
+		['gauge', { gaugeMin: -25, gaugeMax: 200, unit: ' kg "net"' }],
+		['pictogram', { icon: 'heart', pictoUnit: 5, agg: 'mean' }],
+		['venn', { labels: false }],
+		['radial-bar', { agg: 'mean', legend: true }],
+		['waffle', { agg: 'count', legend: false }],
+	]) {
+		const state = C.sampleState(C.chartType(id));
+		state.opts = { ...opts, title: 'Custom title' };
+		const spec = plain(C.buildSpec(state));
+		const result = C.readSpec(spec).find((r) => r.type === id);
+		assert.ok(result, `${id} cannot reopen`);
+		assert.deepEqual(plain(C.buildSpec(result.state)), spec, `${id} changed on reopen`);
+		for (const [key, value] of Object.entries(opts)) assert.equal(result.state.opts[key], value, `${id}: ${key}`);
+	}
+});
